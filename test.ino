@@ -28,7 +28,7 @@ long interval_direction = 0;           // интервал между включ
 long intensity_gabarit =0;                // интенсивность свечения габаритов
 long intensity_direction =0;              // интенсивность свечения направляющих
 String val, val_two, s1="";
-unsigned long current_millis;
+unsigned long current_millis, temp_millis=0;
 
 void setup() {
   Serial.begin(9600);
@@ -51,6 +51,12 @@ void setup() {
   digitalWrite(PIN_MOTOR_2_INPUT_1, LOW);
   digitalWrite(PIN_MOTOR_1_ENABLE, LOW);
   digitalWrite(PIN_MOTOR_2_ENABLE, LOW);
+  digitalWrite(TRIG_BEGIN, LOW);
+  digitalWrite(ECHO_BEGIN, LOW);
+  digitalWrite(TRIG_END, LOW);
+  digitalWrite(ECHO_END, LOW);
+  digitalWrite(LED_PIN_DIRECTION, LOW);
+  digitalWrite(LED_PIN_GABARIT, LOW);
 }
 
 void loop() {
@@ -104,7 +110,7 @@ void loop() {
 //***************************************************
 /********** измерение в прямом направлении ********/  
   if(ultrasound_begin){
-    if (distanceIK(true) < 25){ 
+    if (distanceIK(true) < 15){ 
       Serial.print("V");
       motorStop();
     }
@@ -112,7 +118,7 @@ void loop() {
 //*****************************************************
 /********** измерение в обратном направлении ********/
   if(ultrasound_end){  
-    if (distanceIK(false) < 25){
+    if (distanceIK(false) < 15){
       Serial.print("V");
       motorStop();
     }
@@ -299,7 +305,7 @@ boolean correctionErrors(boolean flag){
    val_two="";
    if(flag){ 
      if(index_end != -1){ 
-       val_two=s1.substring(4,(index_end-1));
+       val_two=s1.substring(4,(index_end));
      }else{
        return false;
      }
@@ -311,8 +317,14 @@ boolean correctionErrors(boolean flag){
 /********** Возвращает растояние до препятствия ********/ 
 int distanceIK(boolean flag){ 
   unsigned int time=0;
+  unsigned long residual;
   unsigned int distance_sm=0; //возвращет растояние от датчика прямого направления
   int trig, echo; 
+  residual=millis() - temp_millis;
+  temp_millis=millis();
+  if(residual < 50) {
+    delay(50 - residual);
+  }
   if(flag){
     trig=TRIG_BEGIN;
     echo=ECHO_BEGIN;
