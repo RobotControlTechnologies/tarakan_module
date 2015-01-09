@@ -1,0 +1,35 @@
+function main() {
+	t1 = tarakan;
+
+	//loop{		
+	//	~t1->changeLighMode(0,1,20,0);	
+	//	~t1->changeLighMode(1,1,20,0);
+	//	~t1->changeLighMode(0,1,80,0);	
+	//	~t1->changeLighMode(1,1,80,0);
+	//	~t1->changeLighMode(0,0,80,0);	
+	//	~t1->changeLighMode(1,0,80,0);
+	//	~t1->changeLighMode(0,2,20,500);	
+	//	~t1->changeLighMode(1,2,20,900);
+	//	~t1->changeLighMode(0,2,80,900);	
+	//	~t1->changeLighMode(1,2,80,500);
+	//	~t1->changeLighMode(0,0,20,500);	
+	//	~t1->changeLighMode(1,0,20,900);	
+ 
+	//	~t1->rotateTo(10,1);
+	//	~t1->rotateTo(45,0);
+	//	~t1->rotateTo(390,1);
+
+	//	~t1->moveTo(10,0);
+	//	~t1->moveTo(10,1);
+	//	~t1->moveTo(40,0);
+		~t1->moveTo(120,0);
+	//	~t1->moveTo(120,1);
+		test =t1->getDistanceObstacle(1);
+		echo(test); 
+		test =t1->getDistanceObstacle(0);
+		echo(test); 	
+
+	//}
+	delete t1;
+
+}
