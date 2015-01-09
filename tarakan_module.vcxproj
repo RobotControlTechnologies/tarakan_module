@@ -81,9 +81,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="globals.h" />
-    <ClInclude Include="module.h" />
-    <ClInclude Include="robot_module.h" />
     <ClInclude Include="tarakan_module.h" />
   </ItemGroup>
   <ItemGroup>
