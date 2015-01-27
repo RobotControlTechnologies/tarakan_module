@@ -3,11 +3,13 @@
 
 class TarakanRobot : public Robot {
 	public:
-		bool isAviable;
-		bool locked;
+		bool is_aviable;
+		bool is_locked;
 		SOCKET socket;
+
+		std::vector<regval> axis_state;
 	
-		TarakanRobot(SOCKET socket) : isAviable(true), locked(false), socket(socket) {}
+		TarakanRobot(SOCKET socket);
 		FunctionResult* executeFunction(regval command_index, regval *args);
 		void axisControl(regval axis_index, regval value);
 

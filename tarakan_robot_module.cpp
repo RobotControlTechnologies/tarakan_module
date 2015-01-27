@@ -15,7 +15,6 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
-typedef ULONGLONG *pbt_addr, *PBT_ADDR;
 typedef std::vector< std::pair< int, int > > universalVec;
 typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
@@ -24,7 +23,7 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 /* GLOBALS CONFIG */
 const int COUNT_FUNCTIONS = 6;
-const int COUNT_AXIS = 4;
+const int COUNT_AXIS = 3;
 
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
@@ -36,8 +35,8 @@ const int COUNT_AXIS = 4;
 
 #define DEFINE_ALL_AXIS \
 	ADD_ROBOT_AXIS("locked", 1, 0)\
-	ADD_ROBOT_AXIS("straight", 1, -1)\
-	ADD_ROBOT_AXIS("rotation", 1, -1)
+	ADD_ROBOT_AXIS("straight", 2, 0)\
+	ADD_ROBOT_AXIS("rotation", 2, 0)
 
 universalVec vec_rotate, vec_move;
 
@@ -216,9 +215,9 @@ Robot* TarakanRobotModule::robotRequire() {
 	int index = rand() % count_robots;
 	int j = 0;
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
-		if ((*i)->isAviable) {
+		if ((*i)->is_aviable) {
 			if (j == index) {
-				(*i)->isAviable = false;
+				(*i)->is_aviable = false;
 				return (*i);
 			}
 			++j;
@@ -234,7 +233,7 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
 			printf("DLL: free robot: %p\n", tarakan_robot);
-			tarakan_robot->isAviable = true;
+			tarakan_robot->is_aviable = true;
 			break;
 		}
 	}
@@ -259,33 +258,51 @@ void TarakanRobotModule::destroy() {
 	delete this;
 }
 
+TarakanRobot::TarakanRobot(SOCKET socket) 
+	 : is_aviable(true), is_locked(true), socket(socket) {
+	for(regval i = 0; i < COUNT_AXIS; ++i) {
+		axis_state.push_back(1);
+	}
+}
+
 FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args) {
+	if (!command_index) {
+		return NULL;
+	}
+
 	FunctionResult *fr;
 	try {
 		std::string command_for_robot = "";
 		bool need_result = false;
 
-		if ((args[0] != 0) && (args[0] != 1)) {
-			throw;
-		}
-
 		if (
-			(command_index >= 1)
-			&& (command_index <= 4)
-		){
-			if (args[1] < 0) {
+			(command_index != ROBOT_COMMAND_HAND_CONTROL_BEGIN)
+			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
+		) {
+			if ((args[0] != 0) && (args[0] != 1)) {
 				throw;
 			}
-		}
 
-		if (command_index != ROBOT_COMMAND_INDEX_HAND_CONTROL) {
+			if (
+				(command_index >= 1)
+				&& (command_index <= 4)
+			){
+				if (args[1] < 0) {
+					throw;
+				}
+			}
+
 			command_for_robot += std::to_string(command_index);
 			command_for_robot += args[0] ? "0" : "1";
-		} else {
-			command_for_robot += "H";
 		}
 
 		switch (command_index) {
+			case ROBOT_COMMAND_HAND_CONTROL_BEGIN: 
+				command_for_robot += "B";
+				break;
+			case ROBOT_COMMAND_HAND_CONTROL_END:
+				command_for_robot += "E";
+				break;
 			case 1:	// moveTo
 			case 2: // rotateTo
 				command_for_robot += std::to_string(getParametrsToTime(args[1], 0) * 1000);
@@ -318,7 +335,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 			case 6: //getDistanceObstacle
 				need_result = true;
 			default: 
-				throw;
+				break;
 		}
 
 		command_for_robot += "&";
@@ -362,14 +379,28 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 }
 
 void TarakanRobot::axisControl(regval axis_index, regval value) {
+	bool need_send = false;
+	
 	if (axis_index == 1) {
-		locked = !!value;
+		if (
+			((is_locked) && (!value))
+			||((!is_locked) && (value))
+		) {
+			is_locked = (bool) value;
+			need_send = true;
+		}
+	} else {
+		need_send = (!is_locked) && (axis_state[axis_index - 1] != value);
 	}
-	if ((!locked)||(axis_index == 1))  {
-		std::string command_for_robot = "";
-		command_for_robot.append(std::to_string(axis_index));
-		command_for_robot.append(std::to_string(value));
+
+	if (need_send) {
+		axis_state[axis_index - 1] = value;
+		std::string command_for_robot = "H";
+		command_for_robot += std::to_string(axis_index);
+		command_for_robot += std::to_string(value);
+		command_for_robot += "&";
 		send(socket, command_for_robot.c_str(), command_for_robot.length(), 0);
+		printf("%s\n",command_for_robot.c_str());
 	}
 }
 
