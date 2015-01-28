@@ -11,14 +11,17 @@
 #define PIN_MOTOR_B_INPUT_1 30
 #define PIN_MOTOR_B_INPUT_2 32
 
-const int motor_max = 200;
+const int motor_speed_max = 200;
+int motor_speed_now = 0;
 String input_buffer = "";
 
 unsigned long moving_time = 0;
 unsigned long previous_millis_moving = 0;
+unsigned long previous_millis_accelarting = 0;
 unsigned long last_time_obstacle_check = 0;
 
-bool robot_is_moving = false;
+bool is_moving = false;
+bool is_acceleration = false;
 bool is_rotation = false;
 bool is_forward = false;
 
@@ -84,14 +87,14 @@ void loop() {
           case '3': //moveToByTime
             {
               moving_time = input_buffer.substring(2, last_char - 1).toInt();
-              robotMove(input_buffer[1] == '1', motor_max);
+              robotMove(input_buffer[1] == '1');
             }
             break;
           case '2': //rotateTo
           case '4': //rotateToByTime
             {
               moving_time = input_buffer.substring(2, last_char - 1).toInt();
-              robotRotate(input_buffer[1] == '1', motor_max);
+              robotRotate(input_buffer[1] == '1');
             }
             break;
           case '5': //changeLightMode
@@ -142,6 +145,12 @@ void loop() {
             {
               is_hand_control = false;
               robotStop();
+              
+              interval_direction = 0;
+              interval_gabarit = 0;
+              analogWrite(LED_PIN_GABARIT, 0);
+              analogWrite(LED_PIN_DIRECTION, 0);
+              
               sendShortAnswer(true);
             }
             break;
@@ -163,18 +172,18 @@ void loop() {
                 case '2':
                   {
                     switch (input_buffer[2]) {
-                      case '0': { robotMove(false, motor_max); } break; //backward
+                      case '0': { robotMove(false); } break; //backward
                       case '1': { robotStop(); } break; //stop
-                      case '2': { robotMove(true, motor_max); } break; //forward                      
+                      case '2': { robotMove(true); } break; //forward                      
                     }
                   }
                   break;
                 case '3':
                   {
                     switch (input_buffer[2]) {
-                      case '0': { robotRotate(true, motor_max); } break; //right
+                      case '0': { robotRotate(true); } break; //right
                       case '1': { robotStop(); } break; //stop
-                      case '2': { robotRotate(false, motor_max); } break; //left                      
+                      case '2': { robotRotate(false); } break; //left                      
                     }
                   }
                   break;
@@ -187,16 +196,29 @@ void loop() {
     }
   }
   
-  if (robot_is_moving) {
+  if (is_moving) {
+    if (is_acceleration) {
+      current_millis = millis();
+      if (current_millis - previous_millis_accelarting > 30) {
+        previous_millis_accelarting = current_millis; 
+
+        motor_speed_now++;
+        analogWrite(PIN_MOTOR_A_ENABLE, motor_speed_now);
+        analogWrite(PIN_MOTOR_B_ENABLE, motor_speed_now);
+        
+        if (motor_speed_now >= motor_speed_max) {
+          is_acceleration = false;
+        }
+      }
+    }
+    
     if (!is_hand_control) {
       current_millis = millis();
       if (current_millis - previous_millis_moving > moving_time) {
         previous_millis_moving = current_millis;
         robotStop();
         sendShortAnswer(true);
-      }
-      
-      if (!is_rotation) {
+      } else if (!is_rotation) {
         if (distanceIK(is_forward) < 15) { 
           robotStop();
           sendShortAnswer(false);
@@ -232,7 +254,7 @@ void loop() {
   }
 }
 
-void robotMove(bool forward,  int speed){
+void robotMove(bool forward){
   if (forward) {
     motorForwardA();
     motorForwardB();
@@ -240,13 +262,14 @@ void robotMove(bool forward,  int speed){
     motorBackwardA();
     motorBackwardB();
   }
-  changeDuty(speed);
   
-  is_forward = forward;
-  robot_is_moving = true;
+  motor_speed_now = 0;
+  is_acceleration = true;
+  is_moving = true;
   is_rotation = false;
+  is_forward = forward;
 }
-void robotRotate(bool right,  int speed){
+void robotRotate(bool right){
   if (right) {
     motorBackwardA();
     motorForwardB();
@@ -254,9 +277,10 @@ void robotRotate(bool right,  int speed){
     motorForwardA();
     motorBackwardB();
   }
-  changeDuty(speed);
 
-  robot_is_moving = true;
+  motor_speed_now = 0;
+  is_acceleration = true;
+  is_moving = true;
   is_rotation = true;
   is_forward = right;
 }
@@ -267,9 +291,11 @@ void robotStop(){
   analogWrite(PIN_MOTOR_B_ENABLE, 0); 
   digitalWrite(PIN_MOTOR_B_INPUT_2, LOW);
   digitalWrite(PIN_MOTOR_B_INPUT_1, LOW);
-  robot_is_moving = false;
+  is_moving = false;
+  is_acceleration = false;
+  motor_speed_now = 0;
 
-  delay(200);
+  delay(500);
 }
 
 void motorForwardA(){
@@ -287,13 +313,6 @@ void motorBackwardA(){
 void motorBackwardB(){
   digitalWrite(PIN_MOTOR_B_INPUT_1, HIGH);
   digitalWrite(PIN_MOTOR_B_INPUT_2, LOW);
-}
-void changeDuty(int speed){
-  for (int i = 0; i <= speed; ++i){
-    analogWrite(PIN_MOTOR_A_ENABLE, i);
-    analogWrite(PIN_MOTOR_B_ENABLE, i);
-    delay(30);
-  }
 }
 int distanceIK(boolean check_forward){ 
   unsigned int delay_time = millis() - last_time_obstacle_check;
