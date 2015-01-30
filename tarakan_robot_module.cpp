@@ -87,12 +87,12 @@ long int getParametrsToTime(int parametr, bool what){
 
 TarakanRobotModule::TarakanRobotModule() {
 	{
-		robot_functions = new FunctionData[COUNT_FUNCTIONS];
+		robot_functions = new FunctionData*[COUNT_FUNCTIONS];
 		regval function_id = 0;
 		DEFINE_ALL_FUNCTIONS
 	}
 	{
-		robot_axis = new AxisData[COUNT_AXIS];
+		robot_axis = new AxisData*[COUNT_AXIS];
 		regval axis_id = 0;
 		DEFINE_ALL_AXIS
 	}
@@ -194,12 +194,12 @@ int TarakanRobotModule::init() {
 	return 0;
 }
 
-FunctionData* TarakanRobotModule::getFunctions(int *count_functions) {
+FunctionData** TarakanRobotModule::getFunctions(int *count_functions) {
 	(*count_functions) = COUNT_FUNCTIONS;
 	return robot_functions;
 }
 
-AxisData* TarakanRobotModule::getAxis(int *count_axis) {
+AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 	(*count_axis) = COUNT_AXIS;
 	return robot_axis;
 }
@@ -234,7 +234,7 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 		if ((*i) == tarakan_robot) {
 			printf("DLL: free robot: %p\n", tarakan_robot);
 			tarakan_robot->is_aviable = true;
-			break;
+			return;
 		}
 	}
 }
@@ -253,6 +253,12 @@ void TarakanRobotModule::final() {
 }
 
 void TarakanRobotModule::destroy() {
+	for (int j = 0; j < COUNT_FUNCTIONS; ++j) {
+		delete robot_functions[j];
+	}
+	for (int j = 0; j < COUNT_AXIS; ++j) {
+		delete robot_axis[j];
+	}
 	delete[] robot_functions;
 	delete[] robot_axis;
 	delete this;
@@ -409,7 +415,5 @@ SOCKET TarakanRobot::getSocket() {
 }
 
 __declspec(dllexport) RobotModule* getRobotModuleObject() {
-	TarakanRobotModule *lrm = new TarakanRobotModule();
-	RobotModule *rm = lrm;
-	return rm;
+	return new TarakanRobotModule();
 }
