@@ -98,6 +98,10 @@ TarakanRobotModule::TarakanRobotModule() {
 	}
 }
 
+int TarakanRobotModule::getVersion() {
+	return 0x0100B; //1.00b
+}
+
 int TarakanRobotModule::init() {
 	srand(time(NULL));
 
