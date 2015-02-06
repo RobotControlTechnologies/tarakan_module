@@ -98,6 +98,10 @@ TarakanRobotModule::TarakanRobotModule() {
 	}
 }
 
+const char *TarakanRobotModule::getUID() {
+	return "Tarakan robot module 1.00 for presentaion";
+}
+
 int TarakanRobotModule::init() {
 	srand(time(NULL));
 
