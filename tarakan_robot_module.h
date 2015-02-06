@@ -26,7 +26,7 @@ class TarakanRobotModule : public RobotModule {
 
 	public:
 		TarakanRobotModule();
-		int getVersion();
+		const char *getUID();
 		int init();
 		FunctionData** getFunctions(int *count_functions);
 		AxisData** getAxis(int *count_axis);

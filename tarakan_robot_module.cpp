@@ -98,8 +98,8 @@ TarakanRobotModule::TarakanRobotModule() {
 	}
 }
 
-int TarakanRobotModule::getVersion() {
-	return 0x0100B; //1.00b
+const char *TarakanRobotModule::getUID() {
+	return "Tarakan robot module 1.00 for presentaion";
 }
 
 int TarakanRobotModule::init() {
