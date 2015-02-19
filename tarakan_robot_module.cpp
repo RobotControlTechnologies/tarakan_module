@@ -19,7 +19,8 @@ typedef std::vector< std::pair< int, int > > universalVec;
 typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 #define DEFAULT_SOCKET_BUFLEN 512
-#define PATH_TO_CONFIG "robot_modules/tarakan/config.ini"
+
+EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
 const int COUNT_FUNCTIONS = 6;
@@ -105,10 +106,21 @@ const char *TarakanRobotModule::getUID() {
 int TarakanRobotModule::init() {
 	srand(time(NULL));
 
+	WCHAR DllPath[MAX_PATH] = {0};
+	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
+
+	WCHAR *tmp = wcsrchr(DllPath, L'\\');
+	WCHAR ConfigPath[MAX_PATH] = {0};
+	
+	size_t path_len = tmp - DllPath;
+
+	wcsncpy(ConfigPath, DllPath, path_len);
+	wcscat(ConfigPath, L"\\config.ini");
+
 	CSimpleIniA ini;
 	ini.SetMultiKey(true);
-	if (ini.LoadFile(PATH_TO_CONFIG) < 0) {
-		printf("Can't load '%s' file!\n", PATH_TO_CONFIG);
+	if (ini.LoadFile(ConfigPath) < 0) {
+		printf("Can't load '%s' file!\n", ConfigPath);
 		return 1;
 	}
 
