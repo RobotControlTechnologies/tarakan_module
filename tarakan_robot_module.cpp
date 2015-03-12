@@ -25,6 +25,8 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 /* GLOBALS CONFIG */
 const int COUNT_FUNCTIONS = 6;
 const int COUNT_AXIS = 3;
+// Здесь создадим глобальную критическую секцию
+CRITICAL_SECTION g_cs;
 
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
@@ -48,9 +50,9 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 long int getParametrsToTime(int parametr, bool what){
 	universalVec::const_iterator iter_key;
 	universalVec* linkOfaddressMemVec;
-	if (what){ // 1 �������
+	if (what){ // 1 ïîâîðîò
 		linkOfaddressMemVec = &vec_rotate;
-	}else{ // 0 ��������
+	}else{ // 0 äâèæåíèå
 		linkOfaddressMemVec = &vec_move;
 	}
 	int min = 0, max = 0, minValue = 0, maxValue = 0, count = 0;
@@ -154,7 +156,7 @@ int TarakanRobotModule::init() {
 		);
 	}
 	
-	//��������� ���� ������ �� ��������
+	//ñîðòèðóåì ýòîò âåêòîð ïî çíà÷åíèþ
 	std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
 	std::sort(vec_move.begin(), vec_move.end(), pred);
 
@@ -223,8 +225,10 @@ AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
+	EnterCriticalSection(&g_cs);
 	int count_robots = aviable_connections.size();
 	if (!count_robots){
+		LeaveCriticalSection(&g_cs); // Сделаю выход перед каждым return'ом функции
 		return NULL;
 	}
 
@@ -234,12 +238,13 @@ Robot* TarakanRobotModule::robotRequire() {
 		if ((*i)->is_aviable) {
 			if (j == index) {
 				(*i)->is_aviable = false;
+				LeaveCriticalSection(&g_cs);// Сделаю выход перед каждым return'ом функции
 				return (*i);
 			}
 			++j;
 		}
 	}
-
+	LeaveCriticalSection(&g_cs);// Сделаю выход перед каждым return'ом функции
 	return NULL;
 }
 
@@ -428,7 +433,10 @@ void TarakanRobot::axisControl(regval axis_index, regval value) {
 SOCKET TarakanRobot::getSocket() {
 	return socket;
 }
-
-__declspec(dllexport) RobotModule* getRobotModuleObject() {
-	return new TarakanRobotModule();
+// Теперь возвращает не указатель на новый объект а указатель на синглтон // Пока сделал в три строчки потому что мне так понятней
+__declspec(dllexport) TarakanRobotModule* getRobotModuleObject() {
+	TarakanRobotModule *TempObj;
+	TempObj = TarakanRobotModule::instance();
+	return TempObj;
+	//return new TarakanRobotModule();
 }
