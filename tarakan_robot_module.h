@@ -23,10 +23,12 @@ class TarakanRobotModule : public RobotModule {
 	m_connections aviable_connections;
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
+	colorPrintf_t *colorPrintf;
 
 	public:
 		TarakanRobotModule();
 		const char *getUID();
+		void prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p);
 		int init();
 		FunctionData** getFunctions(int *count_functions);
 		AxisData** getAxis(int *count_axis);
