@@ -103,6 +103,10 @@ const char *TarakanRobotModule::getUID() {
 	return "Tarakan robot module 1.00 for presentaion";
 }
 
+void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p) {
+	colorPrintf = colorPrintf_p;
+}
+
 int TarakanRobotModule::init() {
 	srand(time(NULL));
 
@@ -120,7 +124,7 @@ int TarakanRobotModule::init() {
 	CSimpleIniA ini;
 	ini.SetMultiKey(true);
 	if (ini.LoadFile(ConfigPath) < 0) {
-		printf("Can't load '%s' file!\n", ConfigPath);
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Can't load '%s' file!\n", ConfigPath);
 		return 1;
 	}
 
@@ -164,10 +168,10 @@ int TarakanRobotModule::init() {
 	char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
-		printf("Unable to load Winsock! Error code is %d\n", WSAGetLastError());
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
 		return 1;
 	} else {
-		printf("WSAStartup() is OK, Winsock lib loaded!\n");
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
 	}
 
 	for (ini_i ini_value = values.begin(); ini_value != values.end(); ++ini_value) {
@@ -177,9 +181,9 @@ int TarakanRobotModule::init() {
 			s = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
 			
 			if (s == INVALID_SOCKET) {
-				printf("Socket creation failed, error %d\n", WSAGetLastError());
+				(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Socket creation failed, error %d\n", WSAGetLastError());
 			} else{
-				printf("socket() looks fine!\n");
+				(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "socket() looks fine!\n");
 			}
 
 			memset(&sab, 0, sizeof(sab));
@@ -191,19 +195,17 @@ int TarakanRobotModule::init() {
 			if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
 				//This is magic
 				if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
-					printf("connect() failed with error code %d\n", WSAGetLastError());
+					(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "connect() failed with error code %d\n", WSAGetLastError());
 					closesocket(s);
 					throw std::exception();
 				}
 			}
 
-			printf("connect() should be fine!\n");
-			
 			TarakanRobot *tarakan_robot = new TarakanRobot(s);
-			printf("DLL: connected to %s robot %p\n", connection.c_str(), tarakan_robot);
+			(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "connected to %s robot %p\n", connection.c_str(), tarakan_robot);
 			aviable_connections.push_back(tarakan_robot);
 		} catch (...) {
-			printf("Cannot connect to robot with connection: %s\n", connection.c_str());
+			(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Cannot connect to robot with connection: %s\n", connection.c_str());
 		}
 	}
 
@@ -221,8 +223,6 @@ AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
-	printf("DLL: new robot require\n");
-
 	int count_robots = aviable_connections.size();
 	if (!count_robots){
 		return NULL;
@@ -248,7 +248,6 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
-			printf("DLL: free robot: %p\n", tarakan_robot);
 			tarakan_robot->is_aviable = true;
 			return;
 		}
