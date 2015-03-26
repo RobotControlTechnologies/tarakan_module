@@ -24,8 +24,9 @@ class TarakanRobotModule : public RobotModule {
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
 	colorPrintf_t *colorPrintf;
-
+	
 	public:
+		CRITICAL_SECTION TRM_cs; // Задаем Критическую секцию TarakanRobotModule_cs
 		TarakanRobotModule();
 		const char *getUID();
 		void prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p);
