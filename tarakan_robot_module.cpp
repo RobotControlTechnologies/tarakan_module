@@ -26,6 +26,7 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 const int COUNT_FUNCTIONS = 6;
 const int COUNT_AXIS = 3;
 
+
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
 	ADD_ROBOT_FUNCTION("rotateTo", 2, false)				/*direction, angle*/\
@@ -48,9 +49,9 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 long int getParametrsToTime(int parametr, bool what){
 	universalVec::const_iterator iter_key;
 	universalVec* linkOfaddressMemVec;
-	if (what){ // 1 �������
+	if (what){ // 1 ïîâîðîò
 		linkOfaddressMemVec = &vec_rotate;
-	}else{ // 0 ��������
+	}else{ // 0 äâèæåíèå
 		linkOfaddressMemVec = &vec_move;
 	}
 	int min = 0, max = 0, minValue = 0, maxValue = 0, count = 0;
@@ -109,7 +110,7 @@ void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *
 
 int TarakanRobotModule::init() {
 	srand(time(NULL));
-
+	InitializeCriticalSection(&TRM_cs); // Инициализация критической секции
 	WCHAR DllPath[MAX_PATH] = {0};
 	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
 
@@ -154,7 +155,7 @@ int TarakanRobotModule::init() {
 		);
 	}
 	
-	//��������� ���� ������ �� ��������
+	//ñîðòèðóåì ýòîò âåêòîð ïî çíà÷åíèþ
 	std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
 	std::sort(vec_move.begin(), vec_move.end(), pred);
 
@@ -223,8 +224,10 @@ AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
+	EnterCriticalSection(&TRM_cs); // Вход в критическую секцию
 	int count_robots = aviable_connections.size();
 	if (!count_robots){
+		LeaveCriticalSection(&TRM_cs); // Выход из критической секции
 		return NULL;
 	}
 
@@ -234,24 +237,28 @@ Robot* TarakanRobotModule::robotRequire() {
 		if ((*i)->is_aviable) {
 			if (j == index) {
 				(*i)->is_aviable = false;
+				LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 				return (*i);
 			}
 			++j;
 		}
 	}
-
+	LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 	return NULL;
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
+	EnterCriticalSection(&TRM_cs); // Вход в критическую секцию
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
 			tarakan_robot->is_aviable = true;
+			LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 			return;
 		}
 	}
+	LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 }
 
 void TarakanRobotModule::final() {
@@ -428,7 +435,10 @@ void TarakanRobot::axisControl(regval axis_index, regval value) {
 SOCKET TarakanRobot::getSocket() {
 	return socket;
 }
-
-__declspec(dllexport) RobotModule* getRobotModuleObject() {
-	return new TarakanRobotModule();
+// Теперь возвращает не указатель на новый объект а указатель на синглтон // Пока сделал в три строчки потому что мне так понятней
+__declspec(dllexport) TarakanRobotModule* getRobotModuleObject() {
+	TarakanRobotModule *TempObj;
+	TempObj = TarakanRobotModule::instance();
+	return TempObj;
+	//return new TarakanRobotModule();
 }
