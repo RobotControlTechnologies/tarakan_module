@@ -25,8 +25,7 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 /* GLOBALS CONFIG */
 const int COUNT_FUNCTIONS = 6;
 const int COUNT_AXIS = 3;
-// Здесь создадим глобальную критическую секцию
-CRITICAL_SECTION g_cs;
+
 
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
@@ -111,7 +110,7 @@ void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *
 
 int TarakanRobotModule::init() {
 	srand(time(NULL));
-
+	InitializeCriticalSection(&TRM_cs); // Инициализация критической секции
 	WCHAR DllPath[MAX_PATH] = {0};
 	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
 
@@ -225,10 +224,10 @@ AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
-	EnterCriticalSection(&g_cs);
+	EnterCriticalSection(&TRM_cs); // Вход в критическую секцию
 	int count_robots = aviable_connections.size();
 	if (!count_robots){
-		LeaveCriticalSection(&g_cs); // Сделаю выход перед каждым return'ом функции
+		LeaveCriticalSection(&TRM_cs); // Выход из критической секции
 		return NULL;
 	}
 
@@ -238,25 +237,28 @@ Robot* TarakanRobotModule::robotRequire() {
 		if ((*i)->is_aviable) {
 			if (j == index) {
 				(*i)->is_aviable = false;
-				LeaveCriticalSection(&g_cs);// Сделаю выход перед каждым return'ом функции
+				LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 				return (*i);
 			}
 			++j;
 		}
 	}
-	LeaveCriticalSection(&g_cs);// Сделаю выход перед каждым return'ом функции
+	LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 	return NULL;
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
+	EnterCriticalSection(&TRM_cs); // Вход в критическую секцию
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
 			tarakan_robot->is_aviable = true;
+			LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 			return;
 		}
 	}
+	LeaveCriticalSection(&TRM_cs);// Выход из критической секции
 }
 
 void TarakanRobotModule::final() {
