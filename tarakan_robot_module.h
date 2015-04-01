@@ -7,11 +7,11 @@ class TarakanRobot : public Robot {
 		bool is_locked;
 		SOCKET socket;
 
-		std::vector<regval> axis_state;
+		std::vector<variable_value> axis_state;
 	
 		TarakanRobot(SOCKET socket);
-		FunctionResult* executeFunction(regval command_index, regval *args);
-		void axisControl(regval axis_index, regval value);
+		FunctionResult* executeFunction(system_value command_index, variable_value *args);
+		void axisControl(system_value axis_index, variable_value value);
 
 		SOCKET getSocket();
 		~TarakanRobot() {}
@@ -31,8 +31,8 @@ class TarakanRobotModule : public RobotModule {
 		const char *getUID();
 		void prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p);
 		int init();
-		FunctionData** getFunctions(int *count_functions);
-		AxisData** getAxis(int *count_axis);
+		FunctionData** getFunctions(unsigned int *count_functions);
+		AxisData** getAxis(unsigned int *count_axis);
 		Robot* robotRequire();
 		void robotFree(Robot *robot);
 		void final();

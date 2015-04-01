@@ -23,8 +23,8 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
-const int COUNT_FUNCTIONS = 6;
-const int COUNT_AXIS = 3;
+const unsigned int COUNT_FUNCTIONS = 6;
+const unsigned int COUNT_AXIS = 3;
 
 
 #define DEFINE_ALL_FUNCTIONS \
@@ -46,7 +46,7 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 	return a.first < b.first;
 }
 
-long int getParametrsToTime(int parametr, bool what){
+long int getParametrsToTime(variable_value parametr, bool what){
 	universalVec::const_iterator iter_key;
 	universalVec* linkOfaddressMemVec;
 	if (what){ 
@@ -90,12 +90,12 @@ long int getParametrsToTime(int parametr, bool what){
 TarakanRobotModule::TarakanRobotModule() {
 	{
 		robot_functions = new FunctionData*[COUNT_FUNCTIONS];
-		regval function_id = 0;
+		system_value function_id = 0;
 		DEFINE_ALL_FUNCTIONS
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
-		regval axis_id = 0;
+		system_value axis_id = 0;
 		DEFINE_ALL_AXIS
 	}
 }
@@ -212,19 +212,19 @@ int TarakanRobotModule::init() {
 	return 0;
 }
 
-FunctionData** TarakanRobotModule::getFunctions(int *count_functions) {
+FunctionData** TarakanRobotModule::getFunctions(unsigned int *count_functions) {
 	(*count_functions) = COUNT_FUNCTIONS;
 	return robot_functions;
 }
 
-AxisData** TarakanRobotModule::getAxis(int *count_axis) {
+AxisData** TarakanRobotModule::getAxis(unsigned int *count_axis) {
 	(*count_axis) = COUNT_AXIS;
 	return robot_axis;
 }
 
 Robot* TarakanRobotModule::robotRequire() {
 	EnterCriticalSection(&TRM_cs);
-	int count_robots = aviable_connections.size();
+	unsigned int count_robots = aviable_connections.size();
 	if (!count_robots){
 		LeaveCriticalSection(&TRM_cs);
 		return NULL;
@@ -247,9 +247,9 @@ Robot* TarakanRobotModule::robotRequire() {
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
-	EnterCriticalSection(&TRM_cs); 
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
+	EnterCriticalSection(&TRM_cs);
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
 			tarakan_robot->is_aviable = true;
@@ -274,10 +274,10 @@ void TarakanRobotModule::final() {
 }
 
 void TarakanRobotModule::destroy() {
-	for (int j = 0; j < COUNT_FUNCTIONS; ++j) {
+	for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
 		delete robot_functions[j];
 	}
-	for (int j = 0; j < COUNT_AXIS; ++j) {
+	for (unsigned int j = 0; j < COUNT_AXIS; ++j) {
 		delete robot_axis[j];
 	}
 	delete[] robot_functions;
@@ -287,12 +287,12 @@ void TarakanRobotModule::destroy() {
 
 TarakanRobot::TarakanRobot(SOCKET socket) 
 	 : is_aviable(true), is_locked(true), socket(socket) {
-	for(regval i = 0; i < COUNT_AXIS; ++i) {
+	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
 }
 
-FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args) {
+FunctionResult* TarakanRobot::executeFunction(system_value command_index, variable_value *args) {
 	if (!command_index) {
 		return NULL;
 	}
@@ -331,8 +331,10 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 				command_for_robot += "E";
 				break;
 			case 1:	// moveTo
+				command_for_robot += std::to_string(getParametrsToTime(args[1], false) * 1000);
+				break;
 			case 2: // rotateTo
-				command_for_robot += std::to_string(getParametrsToTime(args[1], 0) * 1000);
+				command_for_robot += std::to_string(getParametrsToTime(args[1], true) * 1000);
 				break;
 			case 3:	// moveToByTime
 			case 4: // rotateToByTime
@@ -391,7 +393,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 			throw;
 		}
 
-		fr = new FunctionResult(1, 0);
+		fr = new FunctionResult(1);
 
 		if (need_result) {
 			recvstr.erase(0, 1);
@@ -405,7 +407,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 	return fr;
 }
 
-void TarakanRobot::axisControl(regval axis_index, regval value) {
+void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 	bool need_send = false;
 	
 	if (axis_index == 1) {
@@ -413,7 +415,7 @@ void TarakanRobot::axisControl(regval axis_index, regval value) {
 			((is_locked) && (!value))
 			||((!is_locked) && (value))
 		) {
-			is_locked = (bool) value;
+			is_locked = !!value;
 			need_send = true;
 		}
 	} else {
