@@ -20,7 +20,7 @@ typedef std::vector<TarakanRobot*> m_connections;
 typedef m_connections::iterator m_connections_i;
 
 class TarakanRobotModule : public RobotModule {
-	CRITICAL_SECTION TRM_cs; // Критическая секция
+	CRITICAL_SECTION TRM_cs;
 	m_connections aviable_connections;
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
