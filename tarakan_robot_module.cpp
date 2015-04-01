@@ -26,6 +26,7 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 const int COUNT_FUNCTIONS = 6;
 const int COUNT_AXIS = 3;
 
+
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
 	ADD_ROBOT_FUNCTION("rotateTo", 2, false)				/*direction, angle*/\
@@ -48,9 +49,9 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 long int getParametrsToTime(int parametr, bool what){
 	universalVec::const_iterator iter_key;
 	universalVec* linkOfaddressMemVec;
-	if (what){ // 1 поворот
+	if (what){ 
 		linkOfaddressMemVec = &vec_rotate;
-	}else{ // 0 движение
+	}else{ 
 		linkOfaddressMemVec = &vec_move;
 	}
 	int min = 0, max = 0, minValue = 0, maxValue = 0, count = 0;
@@ -109,7 +110,7 @@ void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *
 
 int TarakanRobotModule::init() {
 	srand(time(NULL));
-
+	InitializeCriticalSection(&TRM_cs);
 	WCHAR DllPath[MAX_PATH] = {0};
 	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
 
@@ -154,7 +155,6 @@ int TarakanRobotModule::init() {
 		);
 	}
 	
-	//сортируем этот вектор по значению
 	std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
 	std::sort(vec_move.begin(), vec_move.end(), pred);
 
@@ -223,8 +223,10 @@ AxisData** TarakanRobotModule::getAxis(int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
+	EnterCriticalSection(&TRM_cs);
 	int count_robots = aviable_connections.size();
 	if (!count_robots){
+		LeaveCriticalSection(&TRM_cs);
 		return NULL;
 	}
 
@@ -234,24 +236,28 @@ Robot* TarakanRobotModule::robotRequire() {
 		if ((*i)->is_aviable) {
 			if (j == index) {
 				(*i)->is_aviable = false;
+				LeaveCriticalSection(&TRM_cs);
 				return (*i);
 			}
 			++j;
 		}
 	}
-
+	LeaveCriticalSection(&TRM_cs);
 	return NULL;
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
+	EnterCriticalSection(&TRM_cs); 
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
 			tarakan_robot->is_aviable = true;
+			LeaveCriticalSection(&TRM_cs);
 			return;
 		}
 	}
+	LeaveCriticalSection(&TRM_cs);
 }
 
 void TarakanRobotModule::final() {
