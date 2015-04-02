@@ -398,7 +398,9 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 		if (need_result) {
 			recvstr.erase(0, 1);
 			recvstr.erase(recvstr.find('&'), 1);
-			fr->result = std::stoi(recvstr.c_str());
+			fr = new FunctionResult(1, std::stoi(recvstr.c_str()));
+		} else {
+			fr = new FunctionResult(1, 0);
 		}
 	} catch (...) {
 		fr = new FunctionResult(0);
