@@ -307,7 +307,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
 		) {
 			if ((args[0] != 0) && (args[0] != 1)) {
-				throw;
+				throw std::exception();
 			}
 
 			if (
@@ -315,7 +315,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 				&& (command_index <= 4)
 			){
 				if (args[1] < 0) {
-					throw;
+					throw std::exception();
 				}
 			}
 
@@ -342,10 +342,10 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 				break;
 			case 5: { //changeLightMode
 				if ((args[1] < 0)||(args[1] > 100)) {
-					throw;
+					throw std::exception();
 				}
 				if (args[2] < 0) {
-					throw;
+					throw std::exception();
 				}
 
 				if (
@@ -378,7 +378,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 		int result = select(socket, &readset, NULL, NULL, NULL);
 		if (result < 0 && errno != EINTR){
 			printf("Error in select(): %s\n", strerror(errno));
-			throw;
+			throw std::exception();
 		}
 		
 		char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
@@ -390,7 +390,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 		}
 
 		if (recvstr[0] != '0') {
-			throw;
+			throw std::exception();
 		}
 
 		fr = new FunctionResult(1);
