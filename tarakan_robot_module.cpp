@@ -23,8 +23,9 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
-const int COUNT_FUNCTIONS = 6;
-const int COUNT_AXIS = 3;
+const unsigned int COUNT_FUNCTIONS = 6;
+const unsigned int COUNT_AXIS = 3;
+
 
 #define DEFINE_ALL_FUNCTIONS \
 	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
@@ -45,12 +46,12 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 	return a.first < b.first;
 }
 
-long int getParametrsToTime(int parametr, bool what){
+long int getParametrsToTime(variable_value parametr, bool what){
 	universalVec::const_iterator iter_key;
 	universalVec* linkOfaddressMemVec;
-	if (what){ // 1 поворот
+	if (what){ 
 		linkOfaddressMemVec = &vec_rotate;
-	}else{ // 0 движение
+	}else{ 
 		linkOfaddressMemVec = &vec_move;
 	}
 	int min = 0, max = 0, minValue = 0, maxValue = 0, count = 0;
@@ -89,12 +90,12 @@ long int getParametrsToTime(int parametr, bool what){
 TarakanRobotModule::TarakanRobotModule() {
 	{
 		robot_functions = new FunctionData*[COUNT_FUNCTIONS];
-		regval function_id = 0;
+		system_value function_id = 0;
 		DEFINE_ALL_FUNCTIONS
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
-		regval axis_id = 0;
+		system_value axis_id = 0;
 		DEFINE_ALL_AXIS
 	}
 }
@@ -103,9 +104,13 @@ const char *TarakanRobotModule::getUID() {
 	return "Tarakan robot module 1.00 for presentaion";
 }
 
+void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p) {
+	colorPrintf = colorPrintf_p;
+}
+
 int TarakanRobotModule::init() {
 	srand(time(NULL));
-
+	InitializeCriticalSection(&TRM_cs);
 	WCHAR DllPath[MAX_PATH] = {0};
 	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
 
@@ -120,7 +125,7 @@ int TarakanRobotModule::init() {
 	CSimpleIniA ini;
 	ini.SetMultiKey(true);
 	if (ini.LoadFile(ConfigPath) < 0) {
-		printf("Can't load '%s' file!\n", ConfigPath);
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Can't load '%s' file!\n", ConfigPath);
 		return 1;
 	}
 
@@ -150,7 +155,6 @@ int TarakanRobotModule::init() {
 		);
 	}
 	
-	//сортируем этот вектор по значению
 	std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
 	std::sort(vec_move.begin(), vec_move.end(), pred);
 
@@ -164,10 +168,10 @@ int TarakanRobotModule::init() {
 	char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
-		printf("Unable to load Winsock! Error code is %d\n", WSAGetLastError());
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
 		return 1;
 	} else {
-		printf("WSAStartup() is OK, Winsock lib loaded!\n");
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
 	}
 
 	for (ini_i ini_value = values.begin(); ini_value != values.end(); ++ini_value) {
@@ -177,9 +181,9 @@ int TarakanRobotModule::init() {
 			s = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
 			
 			if (s == INVALID_SOCKET) {
-				printf("Socket creation failed, error %d\n", WSAGetLastError());
+				(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Socket creation failed, error %d\n", WSAGetLastError());
 			} else{
-				printf("socket() looks fine!\n");
+				(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "socket() looks fine!\n");
 			}
 
 			memset(&sab, 0, sizeof(sab));
@@ -191,40 +195,38 @@ int TarakanRobotModule::init() {
 			if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
 				//This is magic
 				if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
-					printf("connect() failed with error code %d\n", WSAGetLastError());
+					(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "connect() failed with error code %d\n", WSAGetLastError());
 					closesocket(s);
 					throw std::exception();
 				}
 			}
 
-			printf("connect() should be fine!\n");
-			
 			TarakanRobot *tarakan_robot = new TarakanRobot(s);
-			printf("DLL: connected to %s robot %p\n", connection.c_str(), tarakan_robot);
+			(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "connected to %s robot %p\n", connection.c_str(), tarakan_robot);
 			aviable_connections.push_back(tarakan_robot);
 		} catch (...) {
-			printf("Cannot connect to robot with connection: %s\n", connection.c_str());
+			(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Cannot connect to robot with connection: %s\n", connection.c_str());
 		}
 	}
 
 	return 0;
 }
 
-FunctionData** TarakanRobotModule::getFunctions(int *count_functions) {
+FunctionData** TarakanRobotModule::getFunctions(unsigned int *count_functions) {
 	(*count_functions) = COUNT_FUNCTIONS;
 	return robot_functions;
 }
 
-AxisData** TarakanRobotModule::getAxis(int *count_axis) {
+AxisData** TarakanRobotModule::getAxis(unsigned int *count_axis) {
 	(*count_axis) = COUNT_AXIS;
 	return robot_axis;
 }
 
 Robot* TarakanRobotModule::robotRequire() {
-	printf("DLL: new robot require\n");
-
-	int count_robots = aviable_connections.size();
+	EnterCriticalSection(&TRM_cs);
+	unsigned int count_robots = aviable_connections.size();
 	if (!count_robots){
+		LeaveCriticalSection(&TRM_cs);
 		return NULL;
 	}
 
@@ -234,25 +236,28 @@ Robot* TarakanRobotModule::robotRequire() {
 		if ((*i)->is_aviable) {
 			if (j == index) {
 				(*i)->is_aviable = false;
+				LeaveCriticalSection(&TRM_cs);
 				return (*i);
 			}
 			++j;
 		}
 	}
-
+	LeaveCriticalSection(&TRM_cs);
 	return NULL;
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
+	EnterCriticalSection(&TRM_cs);
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
-			printf("DLL: free robot: %p\n", tarakan_robot);
 			tarakan_robot->is_aviable = true;
+			LeaveCriticalSection(&TRM_cs);
 			return;
 		}
 	}
+	LeaveCriticalSection(&TRM_cs);
 }
 
 void TarakanRobotModule::final() {
@@ -269,10 +274,10 @@ void TarakanRobotModule::final() {
 }
 
 void TarakanRobotModule::destroy() {
-	for (int j = 0; j < COUNT_FUNCTIONS; ++j) {
+	for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
 		delete robot_functions[j];
 	}
-	for (int j = 0; j < COUNT_AXIS; ++j) {
+	for (unsigned int j = 0; j < COUNT_AXIS; ++j) {
 		delete robot_axis[j];
 	}
 	delete[] robot_functions;
@@ -282,12 +287,12 @@ void TarakanRobotModule::destroy() {
 
 TarakanRobot::TarakanRobot(SOCKET socket) 
 	 : is_aviable(true), is_locked(true), socket(socket) {
-	for(regval i = 0; i < COUNT_AXIS; ++i) {
+	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
 }
 
-FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args) {
+FunctionResult* TarakanRobot::executeFunction(system_value command_index, variable_value *args) {
 	if (!command_index) {
 		return NULL;
 	}
@@ -302,7 +307,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
 		) {
 			if ((args[0] != 0) && (args[0] != 1)) {
-				throw;
+				throw std::exception();
 			}
 
 			if (
@@ -310,7 +315,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 				&& (command_index <= 4)
 			){
 				if (args[1] < 0) {
-					throw;
+					throw std::exception();
 				}
 			}
 
@@ -326,8 +331,10 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 				command_for_robot += "E";
 				break;
 			case 1:	// moveTo
+				command_for_robot += std::to_string(getParametrsToTime(args[1], false) * 1000);
+				break;
 			case 2: // rotateTo
-				command_for_robot += std::to_string(getParametrsToTime(args[1], 0) * 1000);
+				command_for_robot += std::to_string(getParametrsToTime(args[1], true) * 1000);
 				break;
 			case 3:	// moveToByTime
 			case 4: // rotateToByTime
@@ -335,10 +342,10 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 				break;
 			case 5: { //changeLightMode
 				if ((args[1] < 0)||(args[1] > 100)) {
-					throw;
+					throw std::exception();
 				}
 				if (args[2] < 0) {
-					throw;
+					throw std::exception();
 				}
 
 				if (
@@ -371,7 +378,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 		int result = select(socket, &readset, NULL, NULL, NULL);
 		if (result < 0 && errno != EINTR){
 			printf("Error in select(): %s\n", strerror(errno));
-			throw;
+			throw std::exception();
 		}
 		
 		char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
@@ -383,15 +390,17 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 		}
 
 		if (recvstr[0] != '0') {
-			throw;
+			throw std::exception();
 		}
 
-		fr = new FunctionResult(1, 0);
+		fr = new FunctionResult(1);
 
 		if (need_result) {
 			recvstr.erase(0, 1);
 			recvstr.erase(recvstr.find('&'), 1);
-			fr->result = std::stoi(recvstr.c_str());
+			fr = new FunctionResult(1, std::stoi(recvstr.c_str()));
+		} else {
+			fr = new FunctionResult(1, 0);
 		}
 	} catch (...) {
 		fr = new FunctionResult(0);
@@ -400,7 +409,7 @@ FunctionResult* TarakanRobot::executeFunction(regval command_index, regval *args
 	return fr;
 }
 
-void TarakanRobot::axisControl(regval axis_index, regval value) {
+void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 	bool need_send = false;
 	
 	if (axis_index == 1) {
@@ -408,7 +417,7 @@ void TarakanRobot::axisControl(regval axis_index, regval value) {
 			((is_locked) && (!value))
 			||((!is_locked) && (value))
 		) {
-			is_locked = (bool) value;
+			is_locked = !!value;
 			need_send = true;
 		}
 	} else {

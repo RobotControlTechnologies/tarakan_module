@@ -11,7 +11,7 @@
 #define PIN_MOTOR_B_INPUT_1 30
 #define PIN_MOTOR_B_INPUT_2 32
 
-const int motor_speed_max = 200;
+const int motor_speed_max = 240;
 int motor_speed_now = 0;
 String input_buffer = "";
 
@@ -81,19 +81,19 @@ void loop() {
     
     if (input_buffer.length()) {
       int last_char = input_buffer.indexOf('&');
-      if (last_char != -1) {
+      while (last_char != -1) {
         switch (input_buffer[0]) {
           case '1': //moveTo
           case '3': //moveToByTime
             {
-              moving_time = input_buffer.substring(2, last_char - 1).toInt();
+              moving_time = input_buffer.substring(2, last_char).toInt();
               robotMove(input_buffer[1] == '1');
             }
             break;
           case '2': //rotateTo
           case '4': //rotateToByTime
             {
-              moving_time = input_buffer.substring(2, last_char - 1).toInt();
+              moving_time = input_buffer.substring(2, last_char).toInt();
               robotRotate(input_buffer[1] == '1');
             }
             break;
@@ -102,7 +102,7 @@ void loop() {
               int intensity = map(input_buffer.substring(2, 4).toInt(), 0, 100, 0, 255);
               int period;
               if (intensity) {
-                period = input_buffer.substring(5, last_char - 1).toInt();
+                period = input_buffer.substring(5, last_char).toInt();
               } else {
                 period = 0; 
               }
@@ -191,7 +191,8 @@ void loop() {
             }
             break;
         }
-        input_buffer.remove(0, last_char + 1);  
+        input_buffer.remove(0, last_char + 1);
+        last_char = input_buffer.indexOf('&');
       }
     }
   }
@@ -199,7 +200,7 @@ void loop() {
   if (is_moving) {
     if (is_acceleration) {
       current_millis = millis();
-      if (current_millis - previous_millis_accelarting > 30) {
+      if (current_millis - previous_millis_accelarting > 10) {
         previous_millis_accelarting = current_millis; 
 
         motor_speed_now++;
@@ -268,6 +269,7 @@ void robotMove(bool forward){
   is_moving = true;
   is_rotation = false;
   is_forward = forward;
+  previous_millis_moving = millis();
 }
 void robotRotate(bool right){
   if (right) {
@@ -283,6 +285,7 @@ void robotRotate(bool right){
   is_moving = true;
   is_rotation = true;
   is_forward = right;
+  previous_millis_moving = millis();
 }
 void robotStop(){ 
   analogWrite(PIN_MOTOR_A_ENABLE, 0); 
