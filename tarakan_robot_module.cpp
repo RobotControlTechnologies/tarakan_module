@@ -26,15 +26,6 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 const unsigned int COUNT_FUNCTIONS = 6;
 const unsigned int COUNT_AXIS = 3;
 
-
-#define DEFINE_ALL_FUNCTIONS \
-	ADD_ROBOT_FUNCTION("moveTo", 2, true)					/*direction, distanse*/\
-	ADD_ROBOT_FUNCTION("rotateTo", 2, false)				/*direction, angle*/\
-	ADD_ROBOT_FUNCTION("moveToByTime", 2, true)				/*direction, time*/\
-	ADD_ROBOT_FUNCTION("rotateToByTime", 2, false)			/*direction, time*/\
-	ADD_ROBOT_FUNCTION("changeLightMode", 3, false)			/*type, strength, period*/\
-	ADD_ROBOT_FUNCTION("getDistanceObstacle", 1, false)		/*direction*/
-
 #define DEFINE_ALL_AXIS \
 	ADD_ROBOT_AXIS("locked", 1, 0)\
 	ADD_ROBOT_AXIS("straight", 2, 0)\
@@ -91,7 +82,48 @@ TarakanRobotModule::TarakanRobotModule() {
 	{
 		robot_functions = new FunctionData*[COUNT_FUNCTIONS];
 		system_value function_id = 0;
-		DEFINE_ALL_FUNCTIONS
+
+		//DEFINE_ALL_FUNCTIONS
+		FunctionData::ParamTypes *moveToParams = new FunctionData::ParamTypes[2];
+		moveToParams[0] = FunctionData::FLOAT;
+		moveToParams[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, moveToParams, "moveTo");
+		function_id++;
+
+
+		FunctionData::ParamTypes *rotateToParams = new FunctionData::ParamTypes[2];
+		rotateToParams[0] = FunctionData::FLOAT;
+		rotateToParams[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, rotateToParams, "rotateTo");
+		function_id++;
+
+
+		FunctionData::ParamTypes *moveToByTimeParams = new FunctionData::ParamTypes[2];
+		moveToByTimeParams[0] = FunctionData::FLOAT;
+		moveToByTimeParams[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, moveToByTimeParams, "moveToByTime");
+		function_id++;
+
+
+		FunctionData::ParamTypes *rotateToByTimeParams = new FunctionData::ParamTypes[2];
+		rotateToByTimeParams[0] = FunctionData::FLOAT;
+		rotateToByTimeParams[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, rotateToByTimeParams, "rotateToByTime");
+		function_id++;
+
+		
+		FunctionData::ParamTypes *changeLightModeParams = new FunctionData::ParamTypes[3];
+		changeLightModeParams[0] = FunctionData::FLOAT;
+		changeLightModeParams[1] = FunctionData::FLOAT;
+		changeLightModeParams[2] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, changeLightModeParams, "changeLightMode");
+		function_id++;
+
+
+		FunctionData::ParamTypes *getDistanceObstacleParams = new FunctionData::ParamTypes[1];
+		getDistanceObstacleParams[0] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 1, getDistanceObstacleParams, "getDistanceObstacle");
+
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
@@ -106,6 +138,11 @@ const char *TarakanRobotModule::getUID() {
 
 void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p) {
 	colorPrintf = colorPrintf_p;
+}
+
+void *TarakanRobotModule::writePC(unsigned int *buffer_length) {
+	*buffer_length = 0;
+	return NULL;
 }
 
 int TarakanRobotModule::init() {
@@ -292,7 +329,7 @@ TarakanRobot::TarakanRobot(SOCKET socket)
 	}
 }
 
-FunctionResult* TarakanRobot::executeFunction(system_value command_index, variable_value *args) {
+FunctionResult* TarakanRobot::executeFunction(system_value command_index, void **args) {
 	if (!command_index) {
 		return NULL;
 	}
@@ -306,7 +343,8 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 			(command_index != ROBOT_COMMAND_HAND_CONTROL_BEGIN)
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
 		) {
-			if ((args[0] != 0) && (args[0] != 1)) {
+			variable_value *input1 = (variable_value *)(*args);
+			if ((*input1 != 0) && (*input1 != 1)) {
 				throw std::exception();
 			}
 
@@ -314,13 +352,13 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 				(command_index >= 1)
 				&& (command_index <= 4)
 			){
-				if (args[1] < 0) {
+				variable_value *input2 = (variable_value *)(*(args+1));
+				if (*input2 < 0) {
 					throw std::exception();
 				}
 			}
-
 			command_for_robot += std::to_string(command_index);
-			command_for_robot += args[0] ? "0" : "1";
+			command_for_robot += *input1 ? "0" : "1";
 		}
 
 		switch (command_index) {
@@ -331,34 +369,40 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, variab
 				command_for_robot += "E";
 				break;
 			case 1:	// moveTo
-				command_for_robot += std::to_string(getParametrsToTime(args[1], false) * 1000);
+				variable_value *input2 = (variable_value *)(*(args + 1));
+				command_for_robot += std::to_string(getParametrsToTime(*input2, false) * 1000);
 				break;
 			case 2: // rotateTo
-				command_for_robot += std::to_string(getParametrsToTime(args[1], true) * 1000);
+				variable_value *input2 = (variable_value *)(*(args + 1));
+				command_for_robot += std::to_string(getParametrsToTime(*input2, true) * 1000);
 				break;
 			case 3:	// moveToByTime
 			case 4: // rotateToByTime
-				command_for_robot += std::to_string(args[1]);
+				variable_value *input2 = (variable_value *)(*(args + 1));
+				command_for_robot += std::to_string(*input2);
 				break;
 			case 5: { //changeLightMode
-				if ((args[1] < 0)||(args[1] > 100)) {
+				variable_value *input2 = (variable_value *)(*(args + 1));
+				variable_value *input3 = (variable_value *)(*(args + 2));
+				if ((*input2 < 0) || (*input2 > 100)) {
 					throw std::exception();
 				}
-				if (args[2] < 0) {
+				if (*input3 < 0) {
 					throw std::exception();
 				}
 
 				if (
-					(args[1] >= 10)
-					|| (args[1] < 100)
+					(*input2 >= 10)
+					|| (*input2 < 100)
 				) { 
 					command_for_robot.append(std::to_string(0)); 
-				} else if (args[1] < 10) { 
+				}
+				else if (*input2 < 10) {
 					command_for_robot.append(std::to_string(00)); 
 				}
 
-				command_for_robot.append(std::to_string(args[1]));
-				command_for_robot.append(std::to_string(args[2]));
+				command_for_robot.append(std::to_string(*input2));
+				command_for_robot.append(std::to_string(*input3));
 				break;
 			}
 			case 6: //getDistanceObstacle
@@ -434,6 +478,16 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 		printf("%s\n",command_for_robot.c_str());
 	}
 }
+
+int TarakanRobotModule::startProgram(int uniq_index, void *buffer, unsigned int buffer_length) {
+	return 0;
+}
+
+int TarakanRobotModule::endProgram(int uniq_index) {
+	return 0;
+}
+
+
 
 SOCKET TarakanRobot::getSocket() {
 	return socket;
