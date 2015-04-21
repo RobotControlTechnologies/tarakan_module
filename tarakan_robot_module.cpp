@@ -84,39 +84,39 @@ TarakanRobotModule::TarakanRobotModule() {
 		system_value function_id = 0;
 
 		//DEFINE_ALL_FUNCTIONS
-		FunctionData::ParamTypes *moveToParams = new FunctionData::ParamTypes[2];
-		moveToParams[0] = FunctionData::FLOAT;
-		moveToParams[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, moveToParams, "moveTo");
+		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
 		function_id++;
 
 
-		FunctionData::ParamTypes *rotateToParams = new FunctionData::ParamTypes[2];
-		rotateToParams[0] = FunctionData::FLOAT;
-		rotateToParams[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, rotateToParams, "rotateTo");
+		Params = new FunctionData::ParamTypes[2];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "rotateTo");
 		function_id++;
 
 
-		FunctionData::ParamTypes *moveToByTimeParams = new FunctionData::ParamTypes[2];
-		moveToByTimeParams[0] = FunctionData::FLOAT;
-		moveToByTimeParams[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, moveToByTimeParams, "moveToByTime");
+		Params= new FunctionData::ParamTypes[2];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveToByTime");
 		function_id++;
 
 
-		FunctionData::ParamTypes *rotateToByTimeParams = new FunctionData::ParamTypes[2];
-		rotateToByTimeParams[0] = FunctionData::FLOAT;
-		rotateToByTimeParams[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, rotateToByTimeParams, "rotateToByTime");
+		Params = new FunctionData::ParamTypes[2];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "rotateToByTime");
 		function_id++;
 
 		
-		FunctionData::ParamTypes *changeLightModeParams = new FunctionData::ParamTypes[3];
-		changeLightModeParams[0] = FunctionData::FLOAT;
-		changeLightModeParams[1] = FunctionData::FLOAT;
-		changeLightModeParams[2] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 3, changeLightModeParams, "changeLightMode");
+		Params = new FunctionData::ParamTypes[3];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		Params[2] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "changeLightMode");
 		function_id++;
 
 
