@@ -368,19 +368,22 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			case ROBOT_COMMAND_HAND_CONTROL_END:
 				command_for_robot += "E";
 				break;
-			case 1:	// moveTo
+			case 1:	{// moveTo
 				variable_value *input2 = (variable_value *)(*(args + 1));
 				command_for_robot += std::to_string(getParametrsToTime(*input2, false) * 1000);
 				break;
-			case 2: // rotateTo
+			}
+			case 2: {// rotateTo
 				variable_value *input2 = (variable_value *)(*(args + 1));
 				command_for_robot += std::to_string(getParametrsToTime(*input2, true) * 1000);
 				break;
+			}
 			case 3:	// moveToByTime
-			case 4: // rotateToByTime
+			case 4: {// rotateToByTime
 				variable_value *input2 = (variable_value *)(*(args + 1));
 				command_for_robot += std::to_string(*input2);
 				break;
+			}
 			case 5: { //changeLightMode
 				variable_value *input2 = (variable_value *)(*(args + 1));
 				variable_value *input3 = (variable_value *)(*(args + 2));
@@ -486,8 +489,6 @@ int TarakanRobotModule::startProgram(int uniq_index, void *buffer, unsigned int 
 int TarakanRobotModule::endProgram(int uniq_index) {
 	return 0;
 }
-
-
 
 SOCKET TarakanRobot::getSocket() {
 	return socket;
