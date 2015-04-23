@@ -10,7 +10,7 @@ class TarakanRobot : public Robot {
 		std::vector<variable_value> axis_state;
 	
 		TarakanRobot(SOCKET socket);
-		FunctionResult* executeFunction(system_value command_index, variable_value *args);
+		FunctionResult* executeFunction(system_value command_index, void **args);
 		void axisControl(system_value axis_index, variable_value value);
 
 		SOCKET getSocket();
@@ -28,25 +28,29 @@ class TarakanRobotModule : public RobotModule {
 
 	public:
 		TarakanRobotModule();
+		//init
 		const char *getUID();
 		void prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p);
-		int init();
+
+		//compiler only
 		FunctionData** getFunctions(unsigned int *count_functions);
 		AxisData** getAxis(unsigned int *count_axis);
+		void *writePC(unsigned int *buffer_length);
+
+		//intepreter - devices
+		int init();
 		Robot* robotRequire();
 		void robotFree(Robot *robot);
 		void final();
+
+		//intepreter - program
+		int startProgram(int uniq_index, void *buffer, unsigned int buffer_length);
+		int endProgram(int uniq_index);
+
+		//destructor
 		void destroy();
 		~TarakanRobotModule(){};
 };
-
-#define ADD_ROBOT_FUNCTION(FUNCTION_NAME, COUNT_PARAMS, GIVE_EXCEPTION) \
-	robot_functions[function_id] = new FunctionData; \
-	robot_functions[function_id]->command_index = function_id + 1; \
-	robot_functions[function_id]->count_params = COUNT_PARAMS; \
-	robot_functions[function_id]->give_exception = GIVE_EXCEPTION; \
-	robot_functions[function_id]->name = FUNCTION_NAME; \
-	function_id++;
 
 #define ADD_ROBOT_AXIS(AXIS_NAME, UPPER_VALUE, LOWER_VALUE) \
 	robot_axis[axis_id] = new AxisData; \
