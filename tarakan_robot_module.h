@@ -2,18 +2,21 @@
 #define	TARAKAN_ROBOT_MODULE_H
 
 class TarakanRobot : public Robot {
-	public:
+	protected:
 		bool is_aviable;
 		bool is_locked;
-		SOCKET socket;
-
+		SOCKET s;
 		std::vector<variable_value> axis_state;
-	
-		TarakanRobot(SOCKET socket);
+		std::string connection;
+	public:
+		TarakanRobot(std::string connection);
+
+		bool require();
+		void free();
+
 		FunctionResult* executeFunction(system_value command_index, void **args);
 		void axisControl(system_value axis_index, variable_value value);
 
-		SOCKET getSocket();
 		~TarakanRobot() {}
 };
 typedef std::vector<TarakanRobot*> m_connections;

@@ -146,8 +146,17 @@ void *TarakanRobotModule::writePC(unsigned int *buffer_length) {
 }
 
 int TarakanRobotModule::init() {
+	WSADATA wsd;
+	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
+		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
+		return 1;
+	}
+	
+	(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
+
 	srand(time(NULL));
 	InitializeCriticalSection(&TRM_cs);
+
 	WCHAR DllPath[MAX_PATH] = {0};
 	GetModuleFileNameW((HINSTANCE)&__ImageBase, DllPath, _countof(DllPath));
 
@@ -198,52 +207,10 @@ int TarakanRobotModule::init() {
 	CSimpleIniA::TNamesDepend values;
 	ini.GetAllValues("connections", "connection", values);
 
-	WSADATA wsd;
-	SOCKET s;
-	SOCKADDR_BTH sab;
-	
-	char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
-
-	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
-		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
-		return 1;
-	} else {
-		(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
-	}
-
 	for (ini_i ini_value = values.begin(); ini_value != values.end(); ++ini_value) {
 		std::string connection(ini_value->pItem);
-
-		try {
-			s = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
-			
-			if (s == INVALID_SOCKET) {
-				(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Socket creation failed, error %d\n", WSAGetLastError());
-			} else{
-				(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "socket() looks fine!\n");
-			}
-
-			memset(&sab, 0, sizeof(sab));
-			sab.addressFamily = AF_BTH;
-			sab.btAddr = std::stoll(connection.c_str(), nullptr, 16);
-			sab.serviceClassId = SerialPortServiceClass_UUID;
-			sab.port = BT_PORT_ANY;
-
-			if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
-				//This is magic
-				if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
-					(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "connect() failed with error code %d\n", WSAGetLastError());
-					closesocket(s);
-					throw std::exception();
-				}
-			}
-
-			TarakanRobot *tarakan_robot = new TarakanRobot(s);
-			(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "connected to %s robot %p\n", connection.c_str(), tarakan_robot);
-			aviable_connections.push_back(tarakan_robot);
-		} catch (...) {
-			(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Cannot connect to robot with connection: %s\n", connection.c_str());
-		}
+		TarakanRobot *tarakan_robot = new TarakanRobot(connection);
+		aviable_connections.push_back(tarakan_robot);
 	}
 
 	return 0;
@@ -261,22 +228,10 @@ AxisData** TarakanRobotModule::getAxis(unsigned int *count_axis) {
 
 Robot* TarakanRobotModule::robotRequire() {
 	EnterCriticalSection(&TRM_cs);
-	unsigned int count_robots = aviable_connections.size();
-	if (!count_robots){
-		LeaveCriticalSection(&TRM_cs);
-		return NULL;
-	}
-
-	int index = rand() % count_robots;
-	int j = 0;
-	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
-		if ((*i)->is_aviable) {
-			if (j == index) {
-				(*i)->is_aviable = false;
-				LeaveCriticalSection(&TRM_cs);
-				return (*i);
-			}
-			++j;
+	for (auto i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
+		if ((*i)->require()) {
+			LeaveCriticalSection(&TRM_cs);
+			return (*i);
 		}
 	}
 	LeaveCriticalSection(&TRM_cs);
@@ -289,7 +244,7 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 	EnterCriticalSection(&TRM_cs);
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
-			tarakan_robot->is_aviable = true;
+			tarakan_robot->free();
 			LeaveCriticalSection(&TRM_cs);
 			return;
 		}
@@ -299,7 +254,6 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 
 void TarakanRobotModule::final() {
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
-		closesocket((*i)->getSocket());
 		delete (*i);
 	}
 	aviable_connections.clear();
@@ -322,11 +276,58 @@ void TarakanRobotModule::destroy() {
 	delete this;
 }
 
-TarakanRobot::TarakanRobot(SOCKET socket) 
-	 : is_aviable(true), is_locked(true), socket(socket) {
+TarakanRobot::TarakanRobot(std::string connection) :
+	is_aviable(true), is_locked(true), connection(connection) {
 	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
+}
+
+bool TarakanRobot::require() {
+	if (!is_aviable) {
+		return false;
+	}
+
+	s = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
+
+	printf("Try connect with: %s\n", connection.c_str());
+
+	if (s == INVALID_SOCKET) {
+		printf("Socket creation failed, error %d\n", WSAGetLastError());
+		return false;
+	}
+
+	printf("socket() looks fine!\n");
+
+	SOCKADDR_BTH sab;
+
+	memset(&sab, 0, sizeof(sab));
+	sab.addressFamily = AF_BTH;
+	sab.btAddr = std::stoll(connection.c_str(), nullptr, 16);
+	sab.serviceClassId = SerialPortServiceClass_UUID;
+	sab.port = BT_PORT_ANY;
+
+	if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
+		//This is magic
+		if (connect(s, (SOCKADDR *)&sab, sizeof(sab)) == SOCKET_ERROR) {
+			printf("connect() failed with error code %d\n", WSAGetLastError());
+			closesocket(s);
+			return false;
+		}
+	}
+
+	printf("Connected to %s robo\n", connection.c_str());
+	is_aviable = false;
+
+	return true;
+}
+
+void TarakanRobot::free() {
+	if (is_aviable) {
+		return;
+	}
+	is_aviable = true;
+	closesocket(s);
 }
 
 FunctionResult* TarakanRobot::executeFunction(system_value command_index, void **args) {
@@ -418,11 +419,11 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 
 		fd_set readset;
 		FD_ZERO(&readset);
-		FD_SET(socket, &readset);
+		FD_SET(s, &readset);
 
-		send(socket, command_for_robot.c_str(), command_for_robot.length(), 0);
+		send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
 
-		int result = select(socket, &readset, NULL, NULL, NULL);
+		int result = select(s, &readset, NULL, NULL, NULL);
 		if (result < 0 && errno != EINTR){
 			printf("Error in select(): %s\n", strerror(errno));
 			throw std::exception();
@@ -431,7 +432,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 		char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
 		std::string recvstr = "";
 		while (recvstr.find('&') == std::string::npos) {
-			int count_recived = recv(socket, recvbuf, DEFAULT_SOCKET_BUFLEN - 1, 0);
+			int count_recived = recv(s, recvbuf, DEFAULT_SOCKET_BUFLEN - 1, 0);
 			recvbuf[count_recived] = 0;
 			recvstr.append(recvbuf);
 		}
@@ -477,7 +478,7 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 		command_for_robot += std::to_string(axis_index);
 		command_for_robot += std::to_string(value);
 		command_for_robot += "&";
-		send(socket, command_for_robot.c_str(), command_for_robot.length(), 0);
+		send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
 		printf("%s\n",command_for_robot.c_str());
 	}
 }
@@ -490,10 +491,6 @@ int TarakanRobotModule::endProgram(int uniq_index) {
 	return 0;
 }
 
-SOCKET TarakanRobot::getSocket() {
-	return socket;
-}
-
-__declspec(dllexport) RobotModule* getRobotModuleObject() {
+PREFIX_FUNC_DLL RobotModule* getRobotModuleObject() {
 	return new TarakanRobotModule();
 }
