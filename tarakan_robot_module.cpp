@@ -388,24 +388,11 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			case 5: { //changeLightMode
 				variable_value *input2 = (variable_value *)(*(args + 1));
 				variable_value *input3 = (variable_value *)(*(args + 2));
-				if ((*input2 < 0) || (*input2 > 100)) {
-					throw std::exception();
-				}
 				if (*input3 < 0) {
 					throw std::exception();
 				}
 
-				if (
-					(*input2 >= 10)
-					|| (*input2 < 100)
-				) { 
-					command_for_robot.append(std::to_string(0)); 
-				}
-				else if (*input2 < 10) {
-					command_for_robot.append(std::to_string(00)); 
-				}
-
-				command_for_robot.append(std::to_string(*input2));
+				command_for_robot += *input2 ? "1" : "0";
 				command_for_robot.append(std::to_string(*input3));
 				break;
 			}

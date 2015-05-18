@@ -1,27 +1,30 @@
-#define LED_PIN_DIRECTION 2
-#define LED_PIN_GABARIT 3
-#define TRIG_BEGIN 6
-#define ECHO_BEGIN 7
-#define TRIG_END 8
-#define ECHO_END 9
-#define PIN_MOTOR_A_ENABLE 4 //LEFT
-#define PIN_MOTOR_B_ENABLE 5 //RIGHT
-#define PIN_MOTOR_A_INPUT_1 28
-#define PIN_MOTOR_A_INPUT_2 26
-#define PIN_MOTOR_B_INPUT_1 30
-#define PIN_MOTOR_B_INPUT_2 32
+#include <Servo.h>
+
+#define LED_PIN_FORWARD_1 48 //слева направо
+#define LED_PIN_FORWARD_2 49
+#define LED_PIN_BACKWARD_1 50
+#define LED_PIN_BACKWARD_2 51
+
+#define LED_PIN_GABARIT_1 46 //по часовой стрелке начиная с переднего левого
+#define LED_PIN_GABARIT_2 47
+#define LED_PIN_GABARIT_3 52
+#define LED_PIN_GABARIT_4 53
+
+#define TRIG_BEGIN 44
+#define ECHO_BEGIN 45
+#define TRIG_END 42
+#define ECHO_END 43
+#define PIN_MOTOR_LEFT 5
+#define PIN_MOTOR_RIGHT 3
 
 const int motor_speed_max = 240;
-int motor_speed_now = 0;
 String input_buffer = "";
 
 unsigned long moving_time = 0;
 unsigned long previous_millis_moving = 0;
-unsigned long previous_millis_accelarting = 0;
 unsigned long last_time_obstacle_check = 0;
 
 bool is_moving = false;
-bool is_acceleration = false;
 bool is_rotation = false;
 bool is_forward = false;
 
@@ -38,6 +41,9 @@ int led_state_direction = LOW;
 
 bool is_hand_control = false;
 
+Servo servo_left;
+Servo servo_right;
+
 void setup() {
   Serial.begin(9600);
   
@@ -46,30 +52,38 @@ void setup() {
   pinMode(TRIG_END, OUTPUT); 
   pinMode(ECHO_END, INPUT);
   
-  pinMode(LED_PIN_DIRECTION, OUTPUT);
-  pinMode(LED_PIN_GABARIT, OUTPUT);
+  pinMode(LED_PIN_FORWARD_1, OUTPUT);
+  pinMode(LED_PIN_FORWARD_2, OUTPUT);
+  pinMode(LED_PIN_BACKWARD_1, OUTPUT);
+  pinMode(LED_PIN_BACKWARD_2, OUTPUT);
   
-  pinMode(PIN_MOTOR_A_ENABLE, OUTPUT);
-  pinMode(PIN_MOTOR_B_ENABLE, OUTPUT);
-  pinMode(PIN_MOTOR_A_INPUT_1, OUTPUT);
-  pinMode(PIN_MOTOR_A_INPUT_2, OUTPUT); 
-  pinMode(PIN_MOTOR_B_INPUT_1, OUTPUT);
-  pinMode(PIN_MOTOR_B_INPUT_2, OUTPUT);  
+  pinMode(LED_PIN_GABARIT_1, OUTPUT);
+  pinMode(LED_PIN_GABARIT_2, OUTPUT);
+  pinMode(LED_PIN_GABARIT_3, OUTPUT);
+  pinMode(LED_PIN_GABARIT_4, OUTPUT);
+  
+//////////////////////////////////////////  
   
   digitalWrite(TRIG_BEGIN, LOW);
   digitalWrite(ECHO_BEGIN, LOW);
   digitalWrite(TRIG_END, LOW);
   digitalWrite(ECHO_END, LOW);
   
-  digitalWrite(LED_PIN_DIRECTION, LOW);
-  digitalWrite(LED_PIN_GABARIT, LOW);
+  digitalWrite(LED_PIN_FORWARD_1, LOW);
+  digitalWrite(LED_PIN_FORWARD_2, LOW);
+  digitalWrite(LED_PIN_BACKWARD_1, LOW);
+  digitalWrite(LED_PIN_BACKWARD_2, LOW);
   
-  digitalWrite(PIN_MOTOR_A_INPUT_2, LOW);
-  digitalWrite(PIN_MOTOR_B_INPUT_2, LOW);
-  digitalWrite(PIN_MOTOR_A_INPUT_1, LOW); 
-  digitalWrite(PIN_MOTOR_B_INPUT_1, LOW);
-  analogWrite(PIN_MOTOR_A_ENABLE, 0);
-  analogWrite(PIN_MOTOR_B_ENABLE, 0);
+  digitalWrite(LED_PIN_GABARIT_1, LOW);
+  digitalWrite(LED_PIN_GABARIT_2, LOW);
+  digitalWrite(LED_PIN_GABARIT_3, LOW);
+  digitalWrite(LED_PIN_GABARIT_4, LOW);
+
+  servo_left.attach(PIN_MOTOR_LEFT);
+  servo_left.write(89);
+  
+  servo_right.attach(PIN_MOTOR_RIGHT);
+  servo_right.write(90);
 }
 
 void loop() {
@@ -99,26 +113,29 @@ void loop() {
             break;
           case '5': //changeLightMode
             {
-              int intensity = map(input_buffer.substring(2, 4).toInt(), 0, 100, 0, 255);
+              int intensity;
               int period;
-              if (intensity) {
-                period = input_buffer.substring(5, last_char).toInt();
+              if (input_buffer[2] == '1') {
+                intensity = 255;
+                period = input_buffer.substring(3, last_char).toInt();
               } else {
-                period = 0; 
+                intensity = 0;
+                period = 0;
               }
+              
               if (input_buffer[1] == '1') {
                 interval_direction = period;
                 intensity_direction = intensity;
                 
                 if (!period) {
-                  analogWrite(LED_PIN_DIRECTION, intensity);
+                  setStateLedDirection(intensity);
                 }
               } else {
                 interval_gabarit = period;
                 intensity_gabarit = intensity;
                 
                 if (!period) {
-                  analogWrite(LED_PIN_GABARIT, intensity);
+                  setStateLedGabarit(intensity);
                 }
               }
               sendShortAnswer(true);
@@ -135,8 +152,8 @@ void loop() {
 
               interval_direction = 0;
               interval_gabarit = 0;
-              analogWrite(LED_PIN_GABARIT, 0);
-              analogWrite(LED_PIN_DIRECTION, 0);
+              setStateLedGabarit(0);
+              setStateLedDirection(0);
               
               sendShortAnswer(true);
             }
@@ -148,8 +165,8 @@ void loop() {
               
               interval_direction = 0;
               interval_gabarit = 0;
-              analogWrite(LED_PIN_GABARIT, 0);
-              analogWrite(LED_PIN_DIRECTION, 0);
+              setStateLedGabarit(0);
+              setStateLedDirection(0);
               
               sendShortAnswer(true);
             }
@@ -160,11 +177,11 @@ void loop() {
                 case '1':
                   {
                     if (input_buffer[2] == '0') {
-                      analogWrite(LED_PIN_GABARIT, 255);
-                      analogWrite(LED_PIN_DIRECTION, 255);
+                      setStateLedGabarit(255);
+                      setStateLedDirection(255);
                     } else {
-                      analogWrite(LED_PIN_GABARIT, 0);
-                      analogWrite(LED_PIN_DIRECTION, 0);
+                      setStateLedGabarit(0);
+                      setStateLedDirection(0);
                       robotStop();
                     }
                   }
@@ -198,21 +215,6 @@ void loop() {
   }
   
   if (is_moving) {
-    if (is_acceleration) {
-      current_millis = millis();
-      if (current_millis - previous_millis_accelarting > 10) {
-        previous_millis_accelarting = current_millis; 
-
-        motor_speed_now++;
-        analogWrite(PIN_MOTOR_A_ENABLE, motor_speed_now);
-        analogWrite(PIN_MOTOR_B_ENABLE, motor_speed_now);
-        
-        if (motor_speed_now >= motor_speed_max) {
-          is_acceleration = false;
-        }
-      }
-    }
-    
     if (!is_hand_control) {
       current_millis = millis();
       if (current_millis - previous_millis_moving > moving_time) {
@@ -237,7 +239,7 @@ void loop() {
       } else {
         led_state_gabarit = intensity_gabarit;
       }
-      analogWrite(LED_PIN_GABARIT, led_state_gabarit);
+      setStateLedGabarit(led_state_gabarit);
     }  
   }
   
@@ -250,22 +252,34 @@ void loop() {
       } else {
         led_state_direction = intensity_direction;
       }
-      analogWrite(LED_PIN_DIRECTION, led_state_direction);
+      setStateLedDirection(led_state_direction);
     }
   }
 }
 
+void setStateLedDirection(int value) {
+  analogWrite(LED_PIN_FORWARD_1, value);
+  analogWrite(LED_PIN_FORWARD_2, value);
+  analogWrite(LED_PIN_BACKWARD_1, value);
+  analogWrite(LED_PIN_BACKWARD_2, value);
+}
+
+void setStateLedGabarit(int value) {
+  analogWrite(LED_PIN_GABARIT_1, value);
+  analogWrite(LED_PIN_GABARIT_2, value);
+  analogWrite(LED_PIN_GABARIT_3, value);
+  analogWrite(LED_PIN_GABARIT_4, value);
+}
+
 void robotMove(bool forward){
   if (forward) {
-    motorForwardA();
-    motorForwardB();
+    motorForwardLeft();
+    motorForwardRight();
   } else {
-    motorBackwardA();
-    motorBackwardB();
+    motorBackwardLeft();
+    motorBackwardRight();
   }
   
-  motor_speed_now = 0;
-  is_acceleration = true;
   is_moving = true;
   is_rotation = false;
   is_forward = forward;
@@ -273,49 +287,35 @@ void robotMove(bool forward){
 }
 void robotRotate(bool right){
   if (right) {
-    motorBackwardA();
-    motorForwardB();
+    motorBackwardRight();
+    motorForwardLeft();
   } else {
-    motorForwardA();
-    motorBackwardB();
+    motorForwardRight();
+    motorBackwardLeft();
   }
 
-  motor_speed_now = 0;
-  is_acceleration = true;
   is_moving = true;
   is_rotation = true;
   is_forward = right;
   previous_millis_moving = millis();
 }
 void robotStop(){ 
-  analogWrite(PIN_MOTOR_A_ENABLE, 0); 
-  digitalWrite(PIN_MOTOR_A_INPUT_2, LOW);
-  digitalWrite(PIN_MOTOR_A_INPUT_1, LOW);
-  analogWrite(PIN_MOTOR_B_ENABLE, 0); 
-  digitalWrite(PIN_MOTOR_B_INPUT_2, LOW);
-  digitalWrite(PIN_MOTOR_B_INPUT_1, LOW);
+  servo_left.write(89);
+  servo_right.write(90);
   is_moving = false;
-  is_acceleration = false;
-  motor_speed_now = 0;
-
   delay(500);
 }
-
-void motorForwardA(){
-  digitalWrite(PIN_MOTOR_A_INPUT_1, LOW); 
-  digitalWrite(PIN_MOTOR_A_INPUT_2, HIGH);
+void motorForwardLeft(){
+  servo_left.write(180);
 }
-void motorForwardB(){
-  digitalWrite(PIN_MOTOR_B_INPUT_1, LOW);
-  digitalWrite(PIN_MOTOR_B_INPUT_2, HIGH);
+void motorForwardRight(){
+  servo_right.write(180);
 }
-void motorBackwardA(){
-  digitalWrite(PIN_MOTOR_A_INPUT_1, HIGH);
-  digitalWrite(PIN_MOTOR_A_INPUT_2, LOW);
+void motorBackwardLeft(){
+  servo_left.write(0);
 }
-void motorBackwardB(){
-  digitalWrite(PIN_MOTOR_B_INPUT_1, HIGH);
-  digitalWrite(PIN_MOTOR_B_INPUT_2, LOW);
+void motorBackwardRight(){
+  servo_right.write(0);
 }
 int distanceIK(boolean check_forward){ 
   unsigned int delay_time = millis() - last_time_obstacle_check;
