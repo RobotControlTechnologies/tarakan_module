@@ -17,7 +17,14 @@
 #define PIN_MOTOR_LEFT 5
 #define PIN_MOTOR_RIGHT 3
 
-const int motor_speed_max = 240;
+/*1*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*2*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*3*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*4*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*5*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*6*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+///*7*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+
 String input_buffer = "";
 
 unsigned long moving_time = 0;
@@ -28,17 +35,24 @@ bool is_moving = false;
 bool is_rotation = false;
 bool is_forward = false;
 
-int interval_gabarit = 0;
-int interval_direction = 0;
-int intensity_gabarit = 0;
-int intensity_direction = 0;
+const int light_pins[2][4] = {
+  {LED_PIN_GABARIT_1, LED_PIN_GABARIT_2, LED_PIN_GABARIT_3, LED_PIN_GABARIT_4},
+  {LED_PIN_FORWARD_1, LED_PIN_FORWARD_2, LED_PIN_BACKWARD_1, LED_PIN_BACKWARD_2}
+};
+int light_intervals[2][4] = {
+  {0, 0, 0, 0}, //gabarit
+  {0, 0, 0, 0}  //direction
+};
+int light_states[2][4] = {
+  {LOW, LOW, LOW, LOW},
+  {LOW, LOW, LOW, LOW}
+};
+int light_previous_time[2][4] = {
+  {0, 0, 0, 0},
+  {0, 0, 0, 0}
+};
 
 unsigned long current_millis;
-unsigned long previous_millis_gabarit = 0;
-unsigned long previous_millis_direction = 0;
-int led_state_gabarit = LOW;
-int led_state_direction = LOW;
-
 bool is_hand_control = false;
 
 Servo servo_left;
@@ -62,8 +76,6 @@ void setup() {
   pinMode(LED_PIN_GABARIT_3, OUTPUT);
   pinMode(LED_PIN_GABARIT_4, OUTPUT);
   
-//////////////////////////////////////////  
-  
   digitalWrite(TRIG_BEGIN, LOW);
   digitalWrite(ECHO_BEGIN, LOW);
   digitalWrite(TRIG_END, LOW);
@@ -80,10 +92,10 @@ void setup() {
   digitalWrite(LED_PIN_GABARIT_4, LOW);
 
   servo_left.attach(PIN_MOTOR_LEFT);
-  servo_left.write(89);
+  servo_left.write(SERV_L_STOP);
   
   servo_right.attach(PIN_MOTOR_RIGHT);
-  servo_right.write(90);
+  servo_right.write(SERV_R_STOP);
 }
 
 void loop() {
@@ -113,32 +125,35 @@ void loop() {
             break;
           case '5': //changeLightMode
             {
-              int intensity;
+              int led_state;
               int period;
-              if (input_buffer[2] == '1') {
-                intensity = 255;
+              if (input_buffer[3] == '1') {
+                led_state = HIGH;
                 period = input_buffer.substring(3, last_char).toInt();
               } else {
-                intensity = 0;
+                led_state = LOW;
                 period = 0;
               }
-              
+        
+              int group_index;
               if (input_buffer[1] == '1') {
-                interval_direction = period;
-                intensity_direction = intensity;
-                
-                if (!period) {
-                  setStateLedDirection(intensity);
-                }
+                group_index = 1; 
               } else {
-                interval_gabarit = period;
-                intensity_gabarit = intensity;
-                
-                if (!period) {
-                  setStateLedGabarit(intensity);
-                }
+                group_index = 0;
               }
-              sendShortAnswer(true);
+              
+              int led_index = input_buffer[1] - 48;
+              if ((led_index >= 0) && (led_index <= 4)) {
+                if (led_index) {
+                  led_index--;
+                  changeOneLedState(group_index, led_index, led_state, period);
+                } else {
+                  changeGroupLedState(group_index, led_state, period);
+                }
+                sendShortAnswer(true);
+              } else {
+                sendShortAnswer(false);
+              }
             }
             break;
           case '6': //getDistanceObstacle
@@ -150,11 +165,8 @@ void loop() {
             {
               is_hand_control = true;
 
-              interval_direction = 0;
-              interval_gabarit = 0;
-              setStateLedGabarit(0);
-              setStateLedDirection(0);
-              
+              changeGroupLedState(0, HIGH, 0);
+              changeGroupLedState(1, LOW, 0);
               sendShortAnswer(true);
             }
             break;
@@ -163,10 +175,8 @@ void loop() {
               is_hand_control = false;
               robotStop();
               
-              interval_direction = 0;
-              interval_gabarit = 0;
-              setStateLedGabarit(0);
-              setStateLedDirection(0);
+              changeGroupLedState(0, LOW, 0);
+              changeGroupLedState(1, LOW, 0);
               
               sendShortAnswer(true);
             }
@@ -177,11 +187,9 @@ void loop() {
                 case '1':
                   {
                     if (input_buffer[2] == '0') {
-                      setStateLedGabarit(255);
-                      setStateLedDirection(255);
+                      changeGroupLedState(0, HIGH, 0);
                     } else {
-                      setStateLedGabarit(0);
-                      setStateLedDirection(0);
+                      changeGroupLedState(0, LOW, 0);
                       robotStop();
                     }
                   }
@@ -230,45 +238,36 @@ void loop() {
     }
   }
   
-  if (interval_gabarit) {
-    current_millis = millis();
-    if (current_millis - previous_millis_gabarit > interval_gabarit) {
-      previous_millis_gabarit = current_millis; 
-      if (led_state_gabarit) {
-        led_state_gabarit = 0;
-      } else {
-        led_state_gabarit = intensity_gabarit;
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; i < 4; i++) {
+      if (!light_intervals[i][j]) {
+        current_millis = millis();
+        if (current_millis - light_previous_time[i][j] > light_intervals[i][j]) {
+          light_previous_time[i][j] = current_millis;
+          if (light_states[i][j]) {
+            light_states[i][j] = LOW;
+          } else {
+            light_states[i][j] = HIGH;
+          }
+          digitalWrite(light_pins[i][j], light_states[i][j]);
+        }
       }
-      setStateLedGabarit(led_state_gabarit);
-    }  
-  }
-  
-  if (interval_direction){
-    current_millis = millis();
-    if(current_millis - previous_millis_direction > interval_direction) {
-      previous_millis_direction = current_millis; 
-      if (led_state_direction) {
-        led_state_direction = 0;
-      } else {
-        led_state_direction = intensity_direction;
-      }
-      setStateLedDirection(led_state_direction);
     }
   }
 }
 
-void setStateLedDirection(int value) {
-  analogWrite(LED_PIN_FORWARD_1, value);
-  analogWrite(LED_PIN_FORWARD_2, value);
-  analogWrite(LED_PIN_BACKWARD_1, value);
-  analogWrite(LED_PIN_BACKWARD_2, value);
+void changeOneLedState(int group, int index, int state, int period) {
+  if (!period) {
+    digitalWrite(index, state);
+    light_states[group][index] = state;
+  }
+  light_intervals[group][index] = period;
 }
 
-void setStateLedGabarit(int value) {
-  analogWrite(LED_PIN_GABARIT_1, value);
-  analogWrite(LED_PIN_GABARIT_2, value);
-  analogWrite(LED_PIN_GABARIT_3, value);
-  analogWrite(LED_PIN_GABARIT_4, value);
+void changeGroupLedState(int group, int state, int period) {
+  for (int i = 0; i < 4; i++) {
+    changeOneLedState(group, i, state, period);
+  }
 }
 
 void robotMove(bool forward){
@@ -300,22 +299,22 @@ void robotRotate(bool right){
   previous_millis_moving = millis();
 }
 void robotStop(){ 
-  servo_left.write(89);
-  servo_right.write(90);
+  servo_left.write(SERV_L_STOP);
+  servo_right.write(SERV_R_STOP);
   is_moving = false;
   delay(500);
 }
 void motorForwardLeft(){
-  servo_left.write(180);
+  servo_left.write(SERV_L_FORW);
 }
 void motorForwardRight(){
-  servo_right.write(180);
+  servo_right.write(SERV_R_FORW);
 }
 void motorBackwardLeft(){
-  servo_left.write(0);
+  servo_left.write(SERV_L_BACK);
 }
 void motorBackwardRight(){
-  servo_right.write(0);
+  servo_right.write(SERV_R_BACK);
 }
 int distanceIK(boolean check_forward){ 
   unsigned int delay_time = millis() - last_time_obstacle_check;
