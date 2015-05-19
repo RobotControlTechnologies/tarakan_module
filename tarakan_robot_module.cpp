@@ -1,3 +1,8 @@
+
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -7,8 +12,8 @@
 #include <map>
 #include <vector>
 
-#include "../module_headers/module.h"
-#include "../module_headers/robot_module.h"
+#include "../../module_headers/module.h"
+#include "../../module_headers/robot_module.h"
 
 #include "tarakan_robot_module.h"
 #include "SimpleIni.h"
@@ -20,6 +25,8 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 #define DEFAULT_SOCKET_BUFLEN 512
 
+
+
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
@@ -28,8 +35,8 @@ const unsigned int COUNT_AXIS = 3;
 
 #define DEFINE_ALL_AXIS \
 	ADD_ROBOT_AXIS("locked", 1, 0)\
-	ADD_ROBOT_AXIS("straight", 2, 0)\
-	ADD_ROBOT_AXIS("rotation", 2, 0)
+	ADD_ROBOT_AXIS("straight", 200, 0)\
+	ADD_ROBOT_AXIS("rotation", 200, 0)
 
 universalVec vec_rotate, vec_move;
 
@@ -37,46 +44,40 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 	return a.first < b.first;
 }
 
-long int getParametrsToTime(variable_value parametr, bool what){
+/////////////////////////////////////////////////
+
+long int TarakanRobot::getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec){
 	universalVec::const_iterator iter_key;
-	universalVec* linkOfaddressMemVec;
-	if (what){ 
-		linkOfaddressMemVec = &vec_rotate;
-	}else{ 
-		linkOfaddressMemVec = &vec_move;
-	}
 	int min = 0, max = 0, minValue = 0, maxValue = 0, count = 0;
 	long double y = 0;
 	bool flagEnd = false;
-		for (iter_key = linkOfaddressMemVec->begin(); iter_key != linkOfaddressMemVec->end(); ++iter_key){
-			if (parametr >= iter_key->first){
-				min = iter_key->first;
-				count = iter_key->second;
-			}
-			else{
-				max = iter_key->first;
-				maxValue = iter_key->second;
-				minValue = count;
-				flagEnd = true;
-				break;
-			}
-			count++;
+	for (iter_key = linkOfaddressMemVec->begin(); iter_key != linkOfaddressMemVec->end(); ++iter_key){
+		if (parametr >= iter_key->first){
+			min = iter_key->first;
+			count = iter_key->second;
 		}
-		if (!flagEnd){
-			--iter_key;
+		else{
 			max = iter_key->first;
 			maxValue = iter_key->second;
-			--iter_key;
-			min = iter_key->first;
-			minValue = iter_key->second;
+			minValue = count;
+			flagEnd = true;
+			break;
 		}
+		count++;
+	}
+	if (!flagEnd){
+		--iter_key;
+		max = iter_key->first;
+		maxValue = iter_key->second;
+		--iter_key;
+		min = iter_key->first;
+		minValue = iter_key->second;
+	}
 
 	y = (((maxValue - minValue)*(parametr - min)) / (max - min)) + minValue;
 
 	return long(std::rint(y));
 }
-
-/////////////////////////////////////////////////
 
 TarakanRobotModule::TarakanRobotModule() {
 	{
@@ -98,27 +99,32 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 
-		Params= new FunctionData::ParamTypes[2];
+		Params= new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::FLOAT;
 		Params[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveToByTime");
+		Params[2] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
 		function_id++;
 
 
-		Params = new FunctionData::ParamTypes[2];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "rotateToByTime");
-		function_id++;
-
-		
 		Params = new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::FLOAT;
 		Params[1] = FunctionData::FLOAT;
 		Params[2] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "changeLightMode");
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "rotateToByTime");
 		function_id++;
 
+		
+		Params = new FunctionData::ParamTypes[4];
+		Params[0] = FunctionData::FLOAT;
+		Params[1] = FunctionData::FLOAT;
+		Params[2] = FunctionData::FLOAT;
+		Params[3] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 4, Params, "changeLightMode");
+		function_id++;
+
+		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
+		function_id++;
 
 		FunctionData::ParamTypes *getDistanceObstacleParams = new FunctionData::ParamTypes[1];
 		getDistanceObstacleParams[0] = FunctionData::FLOAT;
@@ -177,39 +183,49 @@ int TarakanRobotModule::init() {
 
 	CSimpleIniA::TNamesDepend keys;
 
-	vec_rotate.clear();
-	vec_move.clear();
-		
-	ini.GetAllKeys("rotateTo", keys);
-	for (ini_i ini_key = keys.begin(); ini_key != keys.end(); ++ini_key) {
-		vec_rotate.push_back(
-			std::make_pair(
-				std::stoi(ini_key->pItem, nullptr, 10), 
-				std::stoi(ini.GetValue("rotateTo", ini_key->pItem, NULL), nullptr, 10)
-			)
-		);
-	}
-	keys.clear();
+	int tcor = ini.GetLongValue("main", "count_robots", NULL); // count of robots // returns 0 if count_robots is absent
 
-	ini.GetAllKeys("moveTo", keys);
-	for (ini_i ini_key = keys.begin(); ini_key != keys.end(); ++ini_key) {
-		vec_move.push_back(
-			std::make_pair(
-				std::stoi(ini_key->pItem), 
-				std::stoi(ini.GetValue("moveTo", ini_key->pItem, NULL))
-			)
-		);
-	}
-	
-	std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
-	std::sort(vec_move.begin(), vec_move.end(), pred);
+	for (int i = 1; i <= tcor; i++){ // for each robot
+		vec_rotate.clear();
+		vec_move.clear();
 
-	CSimpleIniA::TNamesDepend values;
-	ini.GetAllValues("connections", "connection", values);
+		std::string tstr("tarakan_");
+		tstr += std::to_string(i);
 
-	for (ini_i ini_value = values.begin(); ini_value != values.end(); ++ini_value) {
-		std::string connection(ini_value->pItem);
-		TarakanRobot *tarakan_robot = new TarakanRobot(connection);
+		ini.GetAllKeys(tstr.c_str(), keys);
+		for (ini_i ini_key = keys.begin(); ini_key != keys.end(); ++ini_key) {
+			std::string tIniTime(ini_key->pItem);
+			
+			if (tIniTime.find("move") != std::string::npos) {
+				tIniTime = tIniTime.substr(10);
+
+				vec_move.push_back(
+					std::make_pair(
+						ini.GetLongValue(tstr.c_str(), ini_key->pItem, NULL),
+						std::stoi(tIniTime, nullptr, 10)
+					)
+				);
+			};
+			if (tIniTime.find("rotate") != std::string::npos) {
+				tIniTime = tIniTime.substr(13);
+
+				vec_rotate.push_back(
+					std::make_pair(
+						ini.GetLongValue(tstr.c_str(), ini_key->pItem, NULL),
+						std::stoi(tIniTime, nullptr, 10)
+					)
+				);
+			};
+		}
+		keys.clear();
+
+		std::sort(vec_rotate.begin(), vec_rotate.end(), pred);
+		std::sort(vec_move.begin(), vec_move.end(), pred);
+
+		// only one field connection in tarakan_x section
+		std::string connection(ini.GetValue(tstr.c_str(), "connection", "-1"));
+		if (!connection.compare("-1")) { throw std::exception(); }
+		TarakanRobot *tarakan_robot = new TarakanRobot(connection, vec_rotate, vec_move);
 		aviable_connections.push_back(tarakan_robot);
 	}
 
@@ -276,8 +292,8 @@ void TarakanRobotModule::destroy() {
 	delete this;
 }
 
-TarakanRobot::TarakanRobot(std::string connection) :
-	is_aviable(true), is_locked(true), connection(connection) {
+TarakanRobot::TarakanRobot(std::string connection, universalVec vec_rotate, universalVec vec_move) :
+	is_aviable(true), is_locked(true), connection(connection), vec_rotate(vec_rotate), vec_move(vec_move) {
 	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
@@ -343,23 +359,14 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 		if (
 			(command_index != ROBOT_COMMAND_HAND_CONTROL_BEGIN)
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
+			&& (command_index != 7)
 		) {
 			variable_value *input1 = (variable_value *)(*args);
 			if ((*input1 != 0) && (*input1 != 1)) {
 				throw std::exception();
 			}
-
-			if (
-				(command_index >= 1)
-				&& (command_index <= 4)
-			){
-				variable_value *input2 = (variable_value *)(*(args+1));
-				if (*input2 < 0) {
-					throw std::exception();
-				}
-			}
 			command_for_robot += std::to_string(command_index);
-			command_for_robot += *input1 ? "0" : "1";
+			command_for_robot += *input1 ? "1" : "0";
 		}
 
 		switch (command_index) {
@@ -370,34 +377,60 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				command_for_robot += "E";
 				break;
 			case 1:	{// moveTo
-				variable_value *input2 = (variable_value *)(*(args + 1));
-				command_for_robot += std::to_string(getParametrsToTime(*input2, false) * 1000);
+				variable_value *input2 = (variable_value *)(*(args + 1)); //distance
+				if (*input2 < 0) { throw std::exception(); }
+
+				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_move) * 1000);
 				break;
 			}
 			case 2: {// rotateTo
-				variable_value *input2 = (variable_value *)(*(args + 1));
-				command_for_robot += std::to_string(getParametrsToTime(*input2, true) * 1000);
+				variable_value *input2 = (variable_value *)(*(args + 1)); //distance
+				if (*input2 < 0) { throw std::exception(); }
+
+				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_rotate) * 1000);
 				break;
 			}
 			case 3:	// moveToByTime
 			case 4: {// rotateToByTime
-				variable_value *input2 = (variable_value *)(*(args + 1));
-				command_for_robot += std::to_string(*input2);
+				variable_value *input2 = (variable_value *)(*(args + 1)); //speed
+				if ((*input2 < 0) || (*input2 > 100)) { throw std::exception(); }
+				variable_value *input3 = (variable_value *)(*(args + 2)); //time
+				if (*input3 < 0) { throw std::exception(); }
+
+				std::string temp("");
+				int ti = *input2;
+				if (ti > 100) ti = 100;
+				temp += std::to_string(ti);
+				while (temp.length() < 3){
+					temp.insert(0, "0");
+				}
+
+				command_for_robot += temp;
+				command_for_robot += std::to_string(*input3);
 				break;
 			}
 			case 5: { //changeLightMode
-				variable_value *input2 = (variable_value *)(*(args + 1));
-				variable_value *input3 = (variable_value *)(*(args + 2));
-				if (*input3 < 0) {
+				variable_value *input2 = (variable_value *)(*(args + 1)); // LED number
+				if (*input2 < 0 || *input2 > 4) {
 					throw std::exception();
 				}
-
-				command_for_robot += *input2 ? "1" : "0";
-				command_for_robot.append(std::to_string(*input3));
+				variable_value *input3 = (variable_value *)(*(args + 2)); // On/Off
+				variable_value *input4 = (variable_value *)(*(args + 3)); // Period
+				if (*input3 < 0) { throw std::exception(); }
+				
+				command_for_robot += std::to_string(*input2);
+				command_for_robot += *input3 ? "1" : "0";
+				command_for_robot += std::to_string(*input4);
 				break;
 			}
-			case 6: //getDistanceObstacle
+			case 6:{ //getDistanceObstacle
 				need_result = true;
+				break;
+			}
+			case 7:{
+				command_for_robot += std::to_string(command_index);
+				break;
+			}
 			default: 
 				break;
 		}
@@ -463,7 +496,21 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 		axis_state[axis_index - 1] = value;
 		std::string command_for_robot = "H";
 		command_for_robot += std::to_string(axis_index);
-		command_for_robot += std::to_string(value);
+
+		// create three-digit number
+		if (axis_index != 1){
+			std::string temp("");
+			int ti = value;
+			temp += std::to_string(ti);
+			while (temp.length() < 3){
+				temp.insert(0, "0");
+			}
+			command_for_robot += temp;
+		}
+		else{
+			command_for_robot += std::to_string(value);
+		}
+
 		command_for_robot += "&";
 		send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
 		printf("%s\n",command_for_robot.c_str());
