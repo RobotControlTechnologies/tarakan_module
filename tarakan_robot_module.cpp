@@ -366,7 +366,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			if ((*input1 != 0) && (*input1 != 1)) {
 				throw std::exception();
 			}
-			command_for_robot += std::to_string(command_index);
+			command_for_robot += std::to_string((int)command_index);
 			command_for_robot += *input1 ? "1" : "0";
 		}
 
@@ -381,14 +381,14 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				variable_value *input2 = (variable_value *)(*(args + 1)); //distance
 				if (*input2 < 0) { throw std::exception(); }
 
-				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_move) * 1000);
+				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_move));
 				break;
 			}
 			case 2: {// rotateTo
 				variable_value *input2 = (variable_value *)(*(args + 1)); //distance
 				if (*input2 < 0) { throw std::exception(); }
 
-				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_rotate) * 1000);
+				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_rotate));
 				break;
 			}
 			case 3:	// moveToByTime
@@ -404,7 +404,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				}
 
 				command_for_robot += temp;
-				command_for_robot += std::to_string(*input3);
+				command_for_robot += std::to_string((int)*input3);
 				break;
 			}
 			case 5: { //changeLightMode
@@ -416,9 +416,9 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				variable_value *input4 = (variable_value *)(*(args + 3)); // Period
 				if (*input4 < 0) { throw std::exception(); }
 				
-				command_for_robot += std::to_string(*input2);
+				command_for_robot += std::to_string((int)*input2);
 				command_for_robot += *input3 ? "1" : "0";
-				command_for_robot += std::to_string(*input4);
+				command_for_robot += std::to_string((int)*input4);
 				break;
 			}
 			case 6:{ //getDistanceObstacle
@@ -426,7 +426,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				break;
 			}
 			case 7:{
-				command_for_robot += std::to_string(command_index);
+				command_for_robot += std::to_string((int)command_index);
 				break;
 			}
 			default: 
