@@ -398,7 +398,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				variable_value *input3 = (variable_value *)(*(args + 2)); //time
 				if (*input3 < 0) { throw std::exception(); }
 
-				std::string temp(std::to_string(*input2));
+				std::string temp(std::to_string((int) *input2));
 				while (temp.length() < 3){
 					temp.insert(0, "0");
 				}
