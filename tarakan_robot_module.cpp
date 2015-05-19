@@ -223,8 +223,9 @@ int TarakanRobotModule::init() {
 		std::sort(vec_move.begin(), vec_move.end(), pred);
 
 		// only one field connection in tarakan_x section
-		std::string connection(ini.GetValue(tstr.c_str(), "connection", "-1"));
-		if (!connection.compare("-1")) { throw std::exception(); }
+		const char *pCon = ini.GetValue(tstr.c_str(), "connection", NULL);
+		if (!pCon) { throw std::exception(); }
+		std::string connection(pCon);
 		TarakanRobot *tarakan_robot = new TarakanRobot(connection, vec_rotate, vec_move);
 		aviable_connections.push_back(tarakan_robot);
 	}
@@ -416,7 +417,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				}
 				variable_value *input3 = (variable_value *)(*(args + 2)); // On/Off
 				variable_value *input4 = (variable_value *)(*(args + 3)); // Period
-				if (*input3 < 0) { throw std::exception(); }
+				if (*input4 < 0) { throw std::exception(); }
 				
 				command_for_robot += std::to_string(*input2);
 				command_for_robot += *input3 ? "1" : "0";
@@ -499,9 +500,7 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 
 		// create three-digit number
 		if (axis_index != 1){
-			std::string temp("");
-			int ti = value;
-			temp += std::to_string(ti);
+			std::string temp(std::to_string((int)value));
 			while (temp.length() < 3){
 				temp.insert(0, "0");
 			}
