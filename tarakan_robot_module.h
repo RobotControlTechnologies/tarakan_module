@@ -1,6 +1,8 @@
 #ifndef TARAKAN_ROBOT_MODULE_H
 #define	TARAKAN_ROBOT_MODULE_H
 
+typedef std::vector< std::pair< int, int > > universalVec;
+
 class TarakanRobot : public Robot {
 	protected:
 		bool is_aviable;
@@ -9,7 +11,11 @@ class TarakanRobot : public Robot {
 		std::vector<variable_value> axis_state;
 		std::string connection;
 	public:
-		TarakanRobot(std::string connection);
+		universalVec vec_rotate, vec_move;
+
+		long int getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec);
+
+		TarakanRobot(std::string connection, universalVec vec_rotate, universalVec vec_move);
 
 		bool require();
 		void free();
