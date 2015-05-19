@@ -17,7 +17,7 @@
 #define PIN_MOTOR_LEFT 5
 #define PIN_MOTOR_RIGHT 3
 
-/*1*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+/*1*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 0, SERV_R_BACK = 0, SERV_L_BACK = 180;
 ///*2*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
 ///*3*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
 ///*4*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
@@ -39,7 +39,7 @@ const int light_pins[2][4] = {
   {LED_PIN_GABARIT_1, LED_PIN_GABARIT_2, LED_PIN_GABARIT_3, LED_PIN_GABARIT_4},
   {LED_PIN_FORWARD_1, LED_PIN_FORWARD_2, LED_PIN_BACKWARD_1, LED_PIN_BACKWARD_2}
 };
-int light_intervals[2][4] = {
+unsigned long light_intervals[2][4] = {
   {0, 0, 0, 0}, //gabarit
   {0, 0, 0, 0}  //direction
 };
@@ -47,7 +47,7 @@ int light_states[2][4] = {
   {LOW, LOW, LOW, LOW},
   {LOW, LOW, LOW, LOW}
 };
-int light_previous_time[2][4] = {
+unsigned long light_previous_time[2][4] = {
   {0, 0, 0, 0},
   {0, 0, 0, 0}
 };
@@ -110,17 +110,29 @@ void loop() {
       while (last_char != -1) {
         switch (input_buffer[0]) {
           case '1': //moveTo
-          case '3': //moveToByTime
             {
               moving_time = input_buffer.substring(2, last_char).toInt();
-              robotMove(input_buffer[1] == '1');
+              robotMove(input_buffer[1] == '1', 100);
+            }
+            break;
+          case '3': //moveToByTime
+            {
+              int speed_percent = input_buffer.substring(2, 5).toInt();
+              moving_time = input_buffer.substring(5, last_char).toInt();
+              robotMove(input_buffer[1] == '1', speed_percent);
             }
             break;
           case '2': //rotateTo
-          case '4': //rotateToByTime
             {
               moving_time = input_buffer.substring(2, last_char).toInt();
-              robotRotate(input_buffer[1] == '1');
+              robotRotate(input_buffer[1] == '1', 100);
+            }
+            break;
+          case '4': //rotateToByTime
+            {
+              int speed_percent = input_buffer.substring(2, 5).toInt();
+              moving_time = input_buffer.substring(5, last_char).toInt();
+              robotRotate(input_buffer[1] == '1', speed_percent);
             }
             break;
           case '5': //changeLightMode
@@ -129,7 +141,7 @@ void loop() {
               int period;
               if (input_buffer[3] == '1') {
                 led_state = HIGH;
-                period = input_buffer.substring(3, last_char).toInt();
+                period = input_buffer.substring(4, last_char).toInt();
               } else {
                 led_state = LOW;
                 period = 0;
@@ -142,7 +154,7 @@ void loop() {
                 group_index = 0;
               }
               
-              int led_index = input_buffer[1] - 48;
+              int led_index = input_buffer[2] - 48;
               if ((led_index >= 0) && (led_index <= 4)) {
                 if (led_index) {
                   led_index--;
@@ -159,6 +171,12 @@ void loop() {
           case '6': //getDistanceObstacle
             {
               sendNormalAnswer(String(distanceIK(input_buffer[1] == '1')));
+            }
+            break;
+          case '7':
+            {
+              robotStop();
+              sendShortAnswer(true);
             }
             break;
           case 'B': //ROBOT_COMMAND_HAND_CONTROL_BEGIN
@@ -196,20 +214,20 @@ void loop() {
                   break;
                 case '2':
                   {
-                    switch (input_buffer[2]) {
-                      case '0': { robotMove(false); } break; //backward
-                      case '1': { robotStop(); } break; //stop
-                      case '2': { robotMove(true); } break; //forward                      
-                    }
+                    int speed_percent = input_buffer.substring(2, 4).toInt();
+                    int speed = map(speed_percent, 0, 200, SERV_L_BACK, SERV_L_FORW);
+                    servo_left.write(speed);
+                    speed = map(speed_percent, 0, 200, SERV_R_BACK, SERV_R_FORW);
+                    servo_right.write(speed);
                   }
                   break;
                 case '3':
                   {
-                    switch (input_buffer[2]) {
-                      case '0': { robotRotate(true); } break; //right
-                      case '1': { robotStop(); } break; //stop
-                      case '2': { robotRotate(false); } break; //left                      
-                    }
+                    int speed_percent = input_buffer.substring(2, 4).toInt();
+                    int speed = map(speed_percent, 0, 200, SERV_L_BACK, SERV_L_FORW);
+                    servo_left.write(speed);
+                    speed = map(speed_percent, 0, 200, SERV_R_FORW, SERV_R_BACK);
+                    servo_right.write(speed);
                   }
                   break;
               }
@@ -239,8 +257,8 @@ void loop() {
   }
   
   for (int i = 0; i < 2; i++) {
-    for (int j = 0; i < 4; i++) {
-      if (!light_intervals[i][j]) {
+    for (int j = 0; j < 4; j++) {
+      if (light_intervals[i][j]) {
         current_millis = millis();
         if (current_millis - light_previous_time[i][j] > light_intervals[i][j]) {
           light_previous_time[i][j] = current_millis;
@@ -257,10 +275,8 @@ void loop() {
 }
 
 void changeOneLedState(int group, int index, int state, int period) {
-  if (!period) {
-    digitalWrite(index, state);
-    light_states[group][index] = state;
-  }
+  digitalWrite(light_pins[group][index], state);
+  light_states[group][index] = state;
   light_intervals[group][index] = period;
 }
 
@@ -270,13 +286,13 @@ void changeGroupLedState(int group, int state, int period) {
   }
 }
 
-void robotMove(bool forward){
+void robotMove(bool forward, int speed_percent){
   if (forward) {
-    motorForwardLeft();
-    motorForwardRight();
+    motorForwardLeft(speed_percent);
+    motorForwardRight(speed_percent);
   } else {
-    motorBackwardLeft();
-    motorBackwardRight();
+    motorBackwardLeft(speed_percent);
+    motorBackwardRight(speed_percent);
   }
   
   is_moving = true;
@@ -284,13 +300,13 @@ void robotMove(bool forward){
   is_forward = forward;
   previous_millis_moving = millis();
 }
-void robotRotate(bool right){
+void robotRotate(bool right, int speed_percent){
   if (right) {
-    motorBackwardRight();
-    motorForwardLeft();
+    motorBackwardRight(speed_percent);
+    motorForwardLeft(speed_percent);
   } else {
-    motorForwardRight();
-    motorBackwardLeft();
+    motorForwardRight(speed_percent);
+    motorBackwardLeft(speed_percent);
   }
 
   is_moving = true;
@@ -304,17 +320,21 @@ void robotStop(){
   is_moving = false;
   delay(500);
 }
-void motorForwardLeft(){
-  servo_left.write(SERV_L_FORW);
+void motorForwardLeft(int speed_percent){
+  int speed = map(speed_percent, 0, 100, SERV_L_STOP, SERV_L_FORW);
+  servo_left.write(speed);
 }
-void motorForwardRight(){
-  servo_right.write(SERV_R_FORW);
+void motorForwardRight(int speed_percent){
+  int speed = map(speed_percent, 0, 100, SERV_R_STOP, SERV_R_FORW);
+  servo_right.write(speed);
 }
-void motorBackwardLeft(){
-  servo_left.write(SERV_L_BACK);
+void motorBackwardLeft(int speed_percent){
+  int speed = map(speed_percent, 0, 100, SERV_L_STOP, SERV_L_BACK);
+  servo_left.write(speed);
 }
-void motorBackwardRight(){
-  servo_right.write(SERV_R_BACK);
+void motorBackwardRight(int speed_percent){
+  int speed = map(speed_percent, 0, 100, SERV_R_STOP, SERV_R_BACK);
+  servo_right.write(speed);
 }
 int distanceIK(boolean check_forward){ 
   unsigned int delay_time = millis() - last_time_obstacle_check;
