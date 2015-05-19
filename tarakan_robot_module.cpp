@@ -366,7 +366,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			if ((*input1 != 0) && (*input1 != 1)) {
 				throw std::exception();
 			}
-			command_for_robot += std::to_string((int)command_index);
+			command_for_robot += std::to_string(command_index);
 			command_for_robot += *input1 ? "1" : "0";
 		}
 
@@ -426,7 +426,7 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				break;
 			}
 			case 7:{
-				command_for_robot += std::to_string((int)command_index);
+				command_for_robot += std::to_string(command_index);
 				break;
 			}
 			default: 
