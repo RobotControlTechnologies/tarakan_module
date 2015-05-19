@@ -211,7 +211,7 @@ int TarakanRobotModule::init() {
 				);
 			};
 			if (tIniTime.find("rotate") != std::string::npos) {
-				tIniTime = tIniTime.substr(12);
+				tIniTime = tIniTime.substr(13);
 
 				vec_rotate.push_back(
 					std::make_pair(
