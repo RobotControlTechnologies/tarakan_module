@@ -244,7 +244,6 @@ void loop() {
     if (!is_hand_control) {
       current_millis = millis();
       if (current_millis - previous_millis_moving > moving_time) {
-        previous_millis_moving = current_millis;
         robotStop();
         sendShortAnswer(true);
       } else if (!is_rotation) {

@@ -12,8 +12,8 @@
 #include <map>
 #include <vector>
 
-#include "../../module_headers/module.h"
-#include "../../module_headers/robot_module.h"
+#include "../module_headers/module.h"
+#include "../module_headers/robot_module.h"
 
 #include "tarakan_robot_module.h"
 #include "SimpleIni.h"
@@ -30,7 +30,7 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
-const unsigned int COUNT_FUNCTIONS = 6;
+const unsigned int COUNT_FUNCTIONS = 7;
 const unsigned int COUNT_AXIS = 3;
 
 #define DEFINE_ALL_AXIS \
@@ -123,13 +123,13 @@ TarakanRobotModule::TarakanRobotModule() {
 		robot_functions[function_id] = new FunctionData(function_id + 1, 4, Params, "changeLightMode");
 		function_id++;
 
-		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
+		Params = new FunctionData::ParamTypes[1];
+		Params[0] = FunctionData::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 1, Params, "getDistanceObstacle");
 		function_id++;
 
-		FunctionData::ParamTypes *getDistanceObstacleParams = new FunctionData::ParamTypes[1];
-		getDistanceObstacleParams[0] = FunctionData::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 1, getDistanceObstacleParams, "getDistanceObstacle");
-
+		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
+		//function_id++;
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
@@ -283,6 +283,7 @@ void TarakanRobotModule::final() {
 
 void TarakanRobotModule::destroy() {
 	for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
+		delete[] robot_functions[j]->params;
 		delete robot_functions[j];
 	}
 	for (unsigned int j = 0; j < COUNT_AXIS; ++j) {
