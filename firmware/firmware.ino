@@ -351,6 +351,8 @@ int distanceIK(boolean check_forward){
     echo = ECHO_END;
   }
   
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
   digitalWrite(trig, HIGH);
   delayMicroseconds(10);
   digitalWrite(trig, LOW);
