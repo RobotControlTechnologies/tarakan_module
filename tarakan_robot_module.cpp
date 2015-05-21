@@ -283,7 +283,9 @@ void TarakanRobotModule::final() {
 
 void TarakanRobotModule::destroy() {
 	for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
-		delete[] robot_functions[j]->params;
+		if (robot_functions[j]->count_params) {
+			delete[] robot_functions[j]->params;
+		}
 		delete robot_functions[j];
 	}
 	for (unsigned int j = 0; j < COUNT_AXIS; ++j) {
