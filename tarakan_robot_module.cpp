@@ -1,24 +1,39 @@
-
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS 
-#define _SCL_SECURE_NO_WARNINGS
+#ifdef _WIN32
+	#define _WINSOCK_DEPRECATED_NO_WARNINGS
+	#define _CRT_SECURE_NO_WARNINGS 
+	#define _SCL_SECURE_NO_WARNINGS
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-
-#include <winsock2.h>
-#include <ws2bth.h>
 #include <map>
 #include <vector>
+#include <iostream>
+
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2bth.h>
+
+	#pragma comment(lib, "Ws2_32.lib")
+#else
+	#include <sys/types.h>
+	#include <sys/socket.h>
+	#include <unistd.h>
+	#include <dlfcn.h>
+	#include <pthread.h>
+	#include <limits.h>
+	#include <bluetooth/bluetooth.h>
+	#include <bluetooth/rfcomm.h>
+#endif
+
+#include "SimpleIni.h"
 
 #include "../module_headers/module.h"
 #include "../module_headers/robot_module.h"
 
 #include "tarakan_robot_module.h"
-#include "SimpleIni.h"
 
-#pragma comment(lib, "Ws2_32.lib")
 
 typedef std::vector< std::pair< int, int > > universalVec;
 typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
@@ -26,8 +41,10 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 #define DEFAULT_SOCKET_BUFLEN 512
 
 
+#ifdef _WIN32
+	EXTERN_C IMAGE_DOS_HEADER __ImageBase;
+#endif
 
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 /* GLOBALS CONFIG */
 const unsigned int COUNT_FUNCTIONS = 7;
@@ -152,6 +169,10 @@ void *TarakanRobotModule::writePC(unsigned int *buffer_length) {
 }
 
 int TarakanRobotModule::init() {
+
+	srand(time(NULL));
+
+#ifdef _WIN32
 	WSADATA wsd;
 	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
 		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
@@ -160,7 +181,6 @@ int TarakanRobotModule::init() {
 	
 	(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
 
-	srand(time(NULL));
 	InitializeCriticalSection(&TRM_cs);
 
 	WCHAR DllPath[MAX_PATH] = {0};
@@ -174,6 +194,23 @@ int TarakanRobotModule::init() {
 	wcsncpy(ConfigPath, DllPath, path_len);
 	wcscat(ConfigPath, L"\\config.ini");
 
+#else
+	//spin_lock_init(TRM_mx);
+	pthread_mutex_init(&TRM_mx, NULL);
+
+	Dl_info PathToSharedObject;
+	void * pointer = reinterpret_cast<void*> (getRobotModuleObject) ;
+	dladdr(pointer,&PathToSharedObject);
+	std::string dltemp(PathToSharedObject.dli_fname);
+
+	int dlfound = dltemp.find_last_of("/");
+
+	dltemp = dltemp.substr(0,dlfound);
+	dltemp += "/config.ini";
+
+	const char* ConfigPath = dltemp.c_str();
+#endif
+
 	CSimpleIniA ini;
 	ini.SetMultiKey(true);
 	if (ini.LoadFile(ConfigPath) < 0) {
@@ -183,7 +220,7 @@ int TarakanRobotModule::init() {
 
 	CSimpleIniA::TNamesDepend keys;
 
-	int tcor = ini.GetLongValue("main", "count_robots", NULL); // count of robots // returns 0 if count_robots is absent
+	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
 		vec_rotate.clear();
@@ -201,7 +238,7 @@ int TarakanRobotModule::init() {
 
 				vec_move.push_back(
 					std::make_pair(
-						ini.GetLongValue(tstr.c_str(), ini_key->pItem, NULL),
+						ini.GetLongValue(tstr.c_str(), ini_key->pItem, 0),
 						std::stoi(tIniTime, nullptr, 10)
 					)
 				);
@@ -211,7 +248,7 @@ int TarakanRobotModule::init() {
 
 				vec_rotate.push_back(
 					std::make_pair(
-						ini.GetLongValue(tstr.c_str(), ini_key->pItem, NULL),
+						ini.GetLongValue(tstr.c_str(), ini_key->pItem, 0),
 						std::stoi(tIniTime, nullptr, 10)
 					)
 				);
@@ -244,6 +281,7 @@ AxisData** TarakanRobotModule::getAxis(unsigned int *count_axis) {
 }
 
 Robot* TarakanRobotModule::robotRequire() {
+#ifdef _WIN32
 	EnterCriticalSection(&TRM_cs);
 	for (auto i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i)->require()) {
@@ -253,11 +291,23 @@ Robot* TarakanRobotModule::robotRequire() {
 	}
 	LeaveCriticalSection(&TRM_cs);
 	return NULL;
+#else
+	pthread_mutex_lock(&TRM_mx);
+	for (auto i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
+		if ((*i)->require()) {
+			pthread_mutex_unlock(&TRM_mx);
+			return (*i);
+		}
+	}
+	pthread_mutex_unlock(&TRM_mx);
+	return NULL;
+#endif
 }
 
 void TarakanRobotModule::robotFree(Robot *robot) {
 	TarakanRobot *tarakan_robot = reinterpret_cast<TarakanRobot*>(robot);
 
+#ifdef _WIN32
 	EnterCriticalSection(&TRM_cs);
 	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i) == tarakan_robot) {
@@ -267,6 +317,18 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 		}
 	}
 	LeaveCriticalSection(&TRM_cs);
+#else
+	pthread_mutex_lock(&TRM_mx);
+	for (m_connections_i i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
+		if ((*i) == tarakan_robot) {
+			tarakan_robot->free();
+			pthread_mutex_unlock(&TRM_mx);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&TRM_mx);
+#endif
+	
 }
 
 void TarakanRobotModule::final() {
@@ -278,7 +340,11 @@ void TarakanRobotModule::final() {
 	vec_rotate.clear();
 	vec_move.clear();
 	
+#ifdef _WIN32
 	WSACleanup();
+#else
+	pthread_mutex_destroy(&TRM_mx);
+#endif
 }
 
 void TarakanRobotModule::destroy() {
@@ -308,17 +374,21 @@ bool TarakanRobot::require() {
 		return false;
 	}
 
+
+#ifdef _WIN32
 	s = socket(AF_BTH, SOCK_STREAM, BTHPROTO_RFCOMM);
-
-	printf("Try connect with: %s\n", connection.c_str());
-
+		printf("Try connect with: %s\n", connection.c_str());
 	if (s == INVALID_SOCKET) {
 		printf("Socket creation failed, error %d\n", WSAGetLastError());
 		return false;
 	}
-
 	printf("socket() looks fine!\n");
+#else
+	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM); // Надо бы проверку тоже сделать
+#endif
 
+
+#ifdef _WIN32
 	SOCKADDR_BTH sab;
 
 	memset(&sab, 0, sizeof(sab));
@@ -335,6 +405,25 @@ bool TarakanRobot::require() {
 			return false;
 		}
 	}
+#else
+	// Пока делаем такой финт. убираем первые 2 символа. и str2ba() переводит строку в нужный ей формат
+	std::string tempsubstr = connection.substr(2); 
+	//char dest[18] = tempsubstr.c_str(); // Видимо MAC Адрес прописывается
+	//char buffer_lx[256];
+	sockaddr_rc addr = {0};
+	addr.rc_family = AF_BLUETOOTH;
+	addr.rc_channel = (uint8_t) 1;
+	str2ba(tempsubstr.c_str(), &addr.rc_bdaddr);
+
+	// connect to server
+	int status;
+    status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
+    if(status){
+        printf(" failed to connect the device!\n");
+        return false;
+    }
+
+#endif
 
 	printf("Connected to %s robo\n", connection.c_str());
 	is_aviable = false;
@@ -347,7 +436,12 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
-	closesocket(s);
+	#ifdef _WIN32
+		closesocket(s);
+	#else
+		close(s);
+	#endif
+	
 }
 
 FunctionResult* TarakanRobot::executeFunction(system_value command_index, void **args) {
@@ -525,5 +619,6 @@ int TarakanRobotModule::endProgram(int uniq_index) {
 }
 
 PREFIX_FUNC_DLL RobotModule* getRobotModuleObject() {
+	printf("%s\n", "tarakan works");
 	return new TarakanRobotModule();
 }
