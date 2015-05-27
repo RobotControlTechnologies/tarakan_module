@@ -7,7 +7,13 @@ class TarakanRobot : public Robot {
 	protected:
 		bool is_aviable;
 		bool is_locked;
-		SOCKET s;
+
+#ifdef _WIN32
+	SOCKET s;
+#else
+	int s;
+#endif
+
 		std::vector<variable_value> axis_state;
 		std::string connection;
 	public:
@@ -29,7 +35,12 @@ typedef std::vector<TarakanRobot*> m_connections;
 typedef m_connections::iterator m_connections_i;
 
 class TarakanRobotModule : public RobotModule {
+#ifdef _WIN32
 	CRITICAL_SECTION TRM_cs;
+#else
+	pthread_mutex_t TRM_mx;
+#endif
+	
 	m_connections aviable_connections;
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
