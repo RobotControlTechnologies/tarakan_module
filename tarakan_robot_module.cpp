@@ -9,7 +9,6 @@
 #include <time.h>
 #include <map>
 #include <vector>
-#include <iostream>
 
 #ifdef _WIN32
 	#include <winsock2.h>
@@ -22,15 +21,14 @@
 	#include <unistd.h>
 	#include <dlfcn.h>
 	#include <pthread.h>
-	#include <limits.h>
 	#include <bluetooth/bluetooth.h>
 	#include <bluetooth/rfcomm.h>
 #endif
 
 #include "SimpleIni.h"
 
-#include "../module_headers/module.h"
-#include "../module_headers/robot_module.h"
+#include "module.h"
+#include "robot_module.h"
 
 #include "tarakan_robot_module.h"
 
@@ -195,7 +193,6 @@ int TarakanRobotModule::init() {
 	wcscat(ConfigPath, L"\\config.ini");
 
 #else
-	//spin_lock_init(TRM_mx);
 	pthread_mutex_init(&TRM_mx, NULL);
 
 	Dl_info PathToSharedObject;
@@ -384,7 +381,7 @@ bool TarakanRobot::require() {
 	}
 	printf("socket() looks fine!\n");
 #else
-	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM); // Надо бы проверку тоже сделать
+	s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 #endif
 
 
@@ -406,20 +403,21 @@ bool TarakanRobot::require() {
 		}
 	}
 #else
-	// Пока делаем такой финт. убираем первые 2 символа. и str2ba() переводит строку в нужный ей формат
 	std::string tempsubstr = connection.substr(2); 
-	//char dest[18] = tempsubstr.c_str(); // Видимо MAC Адрес прописывается
-	//char buffer_lx[256];
 	sockaddr_rc addr = {0};
 	addr.rc_family = AF_BLUETOOTH;
 	addr.rc_channel = (uint8_t) 1;
-	str2ba(tempsubstr.c_str(), &addr.rc_bdaddr);
 
+	for (int i=5;i>0;i--){
+		tempsubstr.insert(i*2,":");
+	}
+
+	str2ba(tempsubstr.c_str(), &addr.rc_bdaddr);
 	// connect to server
 	int status;
     status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
     if(status){
-        printf(" failed to connect the device!\n");
+        printf("failed to connect the device!\n");
         return false;
     }
 
@@ -619,6 +617,5 @@ int TarakanRobotModule::endProgram(int uniq_index) {
 }
 
 PREFIX_FUNC_DLL RobotModule* getRobotModuleObject() {
-	printf("%s\n", "tarakan works");
 	return new TarakanRobotModule();
 }

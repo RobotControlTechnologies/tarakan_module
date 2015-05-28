@@ -4,13 +4,12 @@ CCC=g++
 CXX=g++
 
 # Constants
-MODULE_HEADERS_DIR = "C:\Program Files (x86)\Jenkins\workspace\module_headers"
+MODULE_HEADERS_DIR = "/home/mike/repo/module_headers"
 SIMPLEINI_DIR = "/home/mike/repo/simpleini"
 
 INCLUDE_DIR_FLAGS = -I${MODULE_HEADERS_DIR} -I${SIMPLEINI_DIR}
 
-FLAGS_MUTUAL = -Wall -m32 -std=c++11 -lbluetooth ${INCLUDE_DIR_FLAGS} -MMD -MP -MF "${OBJECTDIR}/$@.d"
-
+FLAGS_MUTUAL = -Wall -m32 -std=c++11 ${INCLUDE_DIR_FLAGS} -MMD -MP -MF "${OBJECTDIR}/$@.d"
 
 .PHONY: debug
 
@@ -23,7 +22,6 @@ release: OBJECTDIR = build/Release
 release: FLAGS = -O3 ${FLAGS_MUTUAL}
 release: FILENAME_FIX = release
 release: clean module
-
 
 clean:
 	@echo "-------------------------" 
@@ -40,6 +38,6 @@ tarakan_robot_module.o:  tarakan_robot_module.cpp
 module: tarakan_robot_module.o
 	@echo "-------------------------" 
 	mkdir -p ${OBJECTDIR}
-	${LINK.cc} -m32 -shared -lbluetooth -o ${OBJECTDIR}/tarakan_module_$(FILENAME_FIX).so ${OBJECTDIR}/tarakan_robot_module.o
+	${LINK.cc}  -m32 -shared  -o ${OBJECTDIR}/tarakan_module_$(FILENAME_FIX).so ${OBJECTDIR}/tarakan_robot_module.o -lm -lbluetooth
 
 
