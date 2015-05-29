@@ -60,15 +60,6 @@ const unsigned int COUNT_AXIS = 3;
 		} \
 	initcalibration += temp;
 
-#define CREATE_CALIBRATION_MESSAGE\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_STOP")\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_STOP")\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_FORW")\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_FORW")\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_BACK")\
-	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_BACK")\
-
-
 universalVec vec_rotate, vec_move;
 
 bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
@@ -283,7 +274,12 @@ int TarakanRobotModule::init() {
 		// Create calibration message
 		std::string initcalibration("C");
 		std::string temp("");
-		CREATE_CALIBRATION_MESSAGE
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_STOP")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_STOP")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_FORW")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_FORW")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_BACK")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_BACK")\
 		initcalibration += "&";
 		// end calibration message
 
@@ -493,12 +489,6 @@ bool TarakanRobot::require() {
 	// Apply calibration
 	try{
 		sendAndRecv(calibration);
-	}
-	catch (...){
-	}
-
-	// Start Motors
-	try{
 		sendAndRecv("8&");
 	}
 	catch (...){
@@ -580,9 +570,9 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			case 3:	{// moveToByTime
 				variable_value *input2 = (variable_value *)(*(args + 1));// On/Off distance test
 				variable_value *input3 = (variable_value *)(*(args + 2)); //speed
-				if ((*input2 < 0) || (*input2 > 100)) { throw std::exception(); }
+				if ((*input3 < 0) || (*input3 > 100)) { throw std::exception(); }
 				variable_value *input4 = (variable_value *)(*(args + 3)); //time
-				if (*input3 < 0) { throw std::exception(); }
+				if (*input4 < 0) { throw std::exception(); }
 
 				std::string temp(std::to_string((int) *input3));
 				while (temp.length() < 3){
