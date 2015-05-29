@@ -17,13 +17,8 @@
 #define PIN_MOTOR_LEFT 5
 #define PIN_MOTOR_RIGHT 3
 
-/*1 const*/ int SERV_R_STOP = 80, SERV_L_STOP = 88, SERV_R_FORW = 180, SERV_L_FORW = 0, SERV_R_BACK = 0, SERV_L_BACK = 180;
-///*2*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
-///*3*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
-///*4*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
-///*5*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
-///*6*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
-///*7*/ const int SERV_R_STOP = 89, SERV_L_STOP = 89, SERV_R_FORW = 180, SERV_L_FORW = 180, SERV_R_BACK = 0, SERV_L_BACK = 0;
+// start calibration
+int SERV_R_STOP = 80, SERV_L_STOP = 88, SERV_R_FORW = 180, SERV_L_FORW = 0, SERV_R_BACK = 0, SERV_L_BACK = 180;
 
 String input_buffer = "";
 
@@ -108,7 +103,7 @@ void loop() {
           case '1': //moveTo
             {
               if (is_motor_start) {
-                is_distance_test_on = input_buffer.substring(2, 3).toInt(); // On/Off distance test
+                is_distance_test_on = (input_buffer[2] == '1') ? true : false; // On/Off distance test
                 moving_time = input_buffer.substring(3, last_char).toInt();
                 robotMove(input_buffer[1] == '1', 100);
               }
@@ -118,7 +113,7 @@ void loop() {
           case '3': //moveToByTime
             {
               if (is_motor_start) {
-                is_distance_test_on = input_buffer.substring(2, 3).toInt(); // On/Off distance test
+                is_distance_test_on = (input_buffer[2] == '1') ? true : false; // On/Off distance test
                 int speed_percent = input_buffer.substring(3, 6).toInt();
                 moving_time = input_buffer.substring(6, last_char).toInt();
                 robotMove(input_buffer[1] == '1', speed_percent);
@@ -253,28 +248,28 @@ void loop() {
               sendShortAnswer(true);  
               break;
             }
-          case 'I': // Include Motors
+          case '8': // Include Motors
             { // Motors On
-              servo_left.attach(PIN_MOTOR_LEFT);
-              servo_left.write(SERV_L_STOP);
+              if (!is_motor_start){
+                servo_left.attach(PIN_MOTOR_LEFT);
+                servo_left.write(SERV_L_STOP);
 
-              servo_right.attach(PIN_MOTOR_RIGHT);
-              servo_right.write(SERV_R_STOP);
+                servo_right.attach(PIN_MOTOR_RIGHT);
+                servo_right.write(SERV_R_STOP);
 
-              is_motor_start = true;
+                is_motor_start = true;
+              }
               sendShortAnswer(true);
               break;
             }
-          case 'S': 
+          case '9': 
             { // Stop Motors
-              if (servo_left.attached()){
-                  servo_left.detach();
-              }
-              if (servo_right.attached()){
-                  servo_right.detach();
-              }
-    
-              is_motor_start = false;
+              if (is_motor_start) {
+                servo_left.detach();
+                servo_right.detach();
+
+                is_motor_start = false;
+              } 
               sendShortAnswer(true);
             }
           break;
