@@ -103,7 +103,7 @@ void loop() {
           case '1': //moveTo
             {
               if (is_motor_start) {
-                is_distance_test_on = (input_buffer[2] == '1') ? true : false; // On/Off distance test
+                is_distance_test_on = (input_buffer[2] == '1'); // On/Off distance test
                 moving_time = input_buffer.substring(3, last_char).toInt();
                 robotMove(input_buffer[1] == '1', 100);
               }
@@ -113,7 +113,7 @@ void loop() {
           case '3': //moveToByTime
             {
               if (is_motor_start) {
-                is_distance_test_on = (input_buffer[2] == '1') ? true : false; // On/Off distance test
+                is_distance_test_on = (input_buffer[2] == '1'); // On/Off distance test
                 int speed_percent = input_buffer.substring(3, 6).toInt();
                 moving_time = input_buffer.substring(6, last_char).toInt();
                 robotMove(input_buffer[1] == '1', speed_percent);

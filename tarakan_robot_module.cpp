@@ -53,13 +53,32 @@ const unsigned int COUNT_AXIS = 3;
 	ADD_ROBOT_AXIS("straight", 200, 0)\
 	ADD_ROBOT_AXIS("rotation", 200, 0)
 
+#define CREATE_CALIBRATION_MESSAGE_PART(NAME)\
+	temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), NAME, 0) ) );\
+		while (temp.length() < 3){ \
+			temp.insert(0, "0"); \
+		} \
+	initcalibration += temp;
+
+#define CREATE_CALIBRATION_MESSAGE\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_STOP")\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_STOP")\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_FORW")\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_FORW")\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_R_BACK")\
+	CREATE_CALIBRATION_MESSAGE_PART("SERV_L_BACK")\
+
+
 universalVec vec_rotate, vec_move;
 
 bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 	return a.first < b.first;
 }
+
+/////////////////////////////////////////////////
+
 // sending and receiving messages
-std::string sendAndRecv(int s, std::string command_for_robot){
+std::string TarakanRobot::sendAndRecv(std::string command_for_robot){
 	fd_set readset;
 	FD_ZERO(&readset);
 	FD_SET(s, &readset);
@@ -85,8 +104,6 @@ std::string sendAndRecv(int s, std::string command_for_robot){
 
 	return recvstr;
 }
-
-/////////////////////////////////////////////////
 
 long int TarakanRobot::getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec){
 	universalVec::const_iterator iter_key;
@@ -265,41 +282,8 @@ int TarakanRobotModule::init() {
 
 		// Create calibration message
 		std::string initcalibration("C");
-		std::string temp(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_R_STOP", 0) ) );
-				while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
-
-		temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_L_STOP", 0) ) );
-		while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
-
-		temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_R_FORW", 0) ) );
-		while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
-
-		temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_L_FORW", 0) ) );
-		while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
-
-		temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_R_BACK", 0) ) );
-		while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
-
-		temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), "SERV_L_BACK", 0) ) );
-		while (temp.length() < 3){
-					temp.insert(0, "0");
-				}
-		initcalibration += temp;
+		std::string temp("");
+		CREATE_CALIBRATION_MESSAGE
 		initcalibration += "&";
 		// end calibration message
 
@@ -508,18 +492,16 @@ bool TarakanRobot::require() {
 
 	// Apply calibration
 	try{
-		sendAndRecv(s, calibration);
+		sendAndRecv(calibration);
 	}
 	catch (...){
-		throw std::exception();
 	}
 
 	// Start Motors
 	try{
-		sendAndRecv(s, "8&");
+		sendAndRecv("8&");
 	}
 	catch (...){
-		throw std::exception();
 	}
 
 	return true;
@@ -532,10 +514,9 @@ void TarakanRobot::free() {
 	is_aviable = true;
 	// Stop Motors
 	try{
-		sendAndRecv(s, "9&");
+		sendAndRecv("9&");
 	}
 	catch (...){
-		throw std::exception();
 	}
 
 
@@ -655,14 +636,9 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			default: 
 				break;
 		}
-		std::string recvstr("");
 		command_for_robot += "&";
-		try{
-			recvstr = sendAndRecv(s, command_for_robot);
-		}
-		catch (...){
-			throw std::exception();
-		}
+		
+		std::string	recvstr = sendAndRecv(command_for_robot);
 
 		fr = new FunctionResult(1);
 
