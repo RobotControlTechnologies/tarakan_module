@@ -76,7 +76,7 @@ std::string TarakanRobot::sendAndRecv(std::string command_for_robot){
 
 	send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
 
-	int result = select(s, &readset, NULL, NULL, NULL);
+	int result = select(s+1, &readset, NULL, NULL, NULL);
 	if (result < 0 && errno != EINTR){
 		printf("Error in select(): %s\n", strerror(errno));
 		throw std::exception();
