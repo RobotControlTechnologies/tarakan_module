@@ -219,23 +219,36 @@ void loop() {
                   break;
                 case '2':
                   {
-                    int speed_percent = input_buffer.substring(2, 4).toInt();
-                    int speed = map(speed_percent, 0, 200, SERV_L_BACK, SERV_L_FORW);
-                    servo_left.write(speed);
-                    speed = map(speed_percent, 0, 200, SERV_R_BACK, SERV_R_FORW);
-                    servo_right.write(speed);
+                    int speed_percent = input_buffer.substring(2, 5).toInt();
+                    Serial.print(speed_percent);
+                    if (speed_percent == 100) { robotStop(); }
+                    else if( speed_percent > 100) { 
+                      motorForwardLeft(speed_percent - 100);
+                      motorForwardRight(speed_percent - 100);
+                    }
+                    else if(speed_percent < 100) {
+                      motorBackwardLeft(100 - speed_percent);
+                      motorBackwardRight(100 - speed_percent);
+                    }
                   }
                   break;
                 case '3':
                   {
-                    int speed_percent = input_buffer.substring(2, 4).toInt();
-                    int speed = map(speed_percent, 0, 200, SERV_L_BACK, SERV_L_FORW);
-                    servo_left.write(speed);
-                    speed = map(speed_percent, 0, 200, SERV_R_FORW, SERV_R_BACK);
-                    servo_right.write(speed);
+                    int speed_percent = input_buffer.substring(2, 5).toInt();
+                    Serial.print(speed_percent);
+                    if (speed_percent == 100) { robotStop(); }
+                    else if( speed_percent > 100) { 
+                      motorBackwardLeft(speed_percent - 100);
+                      motorForwardRight(speed_percent - 100);
+                    }
+                    else if(speed_percent < 100) {
+                      motorForwardLeft(100 - speed_percent);
+                      motorBackwardRight(100 - speed_percent);
+                    }
                   }
                   break;
               }
+              break;
             }
           case 'C': // calibration call
             {
