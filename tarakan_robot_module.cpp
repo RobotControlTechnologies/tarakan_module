@@ -135,6 +135,10 @@ TarakanRobotModule::TarakanRobotModule() {
 		system_value function_id = 0;
 
 		//DEFINE_ALL_FUNCTIONS
+		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
@@ -150,6 +154,11 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 
+		Params= new FunctionData::ParamTypes[3];
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
 		Params= new FunctionData::ParamTypes[4];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
@@ -261,7 +270,6 @@ int TarakanRobotModule::init() {
 	CSimpleIniA::TNamesDepend keys;
 
 	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
-
 
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
@@ -383,8 +391,7 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 		}
 	}
 	pthread_mutex_unlock(&TRM_mx);
-#endif
-	
+#endif	
 }
 
 void TarakanRobotModule::final() {
@@ -480,7 +487,6 @@ bool TarakanRobot::require() {
         printf("failed to connect the device!\n");
         return false;
     }
-
 #endif
 
 	printf("Connected to %s robo\n", connection.c_str());
@@ -502,6 +508,7 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
+
 	// Stop Motors
 	try{
 		sendAndRecv("9&");

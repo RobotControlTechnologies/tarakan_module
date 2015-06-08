@@ -80,3 +80,6 @@ rotation  | 200  | 0  | Дискретная ось. Постоянное вра
 
 ####Компиляция
 Для компиляции модуля потребуется библиотека [SimpleIni](https://github.com/brofield/simpleini)
+Для компиляции и работы модуля под Linux потребуется установить Bluetooth библиотеки:
+ - sudo apt-get install libbluetooth-dev - для 32х бит
+ - sudo apt-get install libbluetooth-dev:i386 - для 64х бит
