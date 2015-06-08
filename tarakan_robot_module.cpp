@@ -135,18 +135,15 @@ TarakanRobotModule::TarakanRobotModule() {
 		system_value function_id = 0;
 
 		//DEFINE_ALL_FUNCTIONS
-<<<<<<< HEAD
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
-=======
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		Params[2] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveTo");
->>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 		function_id++;
 
 
@@ -157,20 +154,17 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 
-<<<<<<< HEAD
 		Params= new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		Params[2] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
-=======
 		Params= new FunctionData::ParamTypes[4];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		Params[2] = FunctionData::ParamTypes::FLOAT;
 		Params[3] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 4, Params, "moveToByTime");
->>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 		function_id++;
 
 
@@ -196,8 +190,6 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
-<<<<<<< HEAD
-=======
 		function_id++;
 
 		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "startMotors");
@@ -205,7 +197,6 @@ TarakanRobotModule::TarakanRobotModule() {
 
 		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stopMotors");
 		function_id++;
->>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
@@ -280,12 +271,6 @@ int TarakanRobotModule::init() {
 
 	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
 
-<<<<<<< HEAD
-	
-	
-=======
-
->>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
 		vec_rotate.clear();
@@ -523,13 +508,11 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
-<<<<<<< HEAD
 #ifdef _WIN32
 	closesocket(s);
 #else
 	close(s);
 #endif
-=======
 	// Stop Motors
 	try{
 		sendAndRecv("9&");
@@ -543,7 +526,6 @@ void TarakanRobot::free() {
 	#else
 		close(s);
 	#endif
->>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 	
 }
 
