@@ -101,50 +101,49 @@ TarakanRobotModule::TarakanRobotModule() {
 
 		//DEFINE_ALL_FUNCTIONS
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
 		function_id++;
 
 
 		Params = new FunctionData::ParamTypes[2];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "rotateTo");
 		function_id++;
 
 
 		Params= new FunctionData::ParamTypes[3];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
-		Params[2] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
 		function_id++;
 
 
 		Params = new FunctionData::ParamTypes[3];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
-		Params[2] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "rotateToByTime");
 		function_id++;
 
 		
 		Params = new FunctionData::ParamTypes[4];
-		Params[0] = FunctionData::FLOAT;
-		Params[1] = FunctionData::FLOAT;
-		Params[2] = FunctionData::FLOAT;
-		Params[3] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
+		Params[3] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 4, Params, "changeLightMode");
 		function_id++;
 
 		Params = new FunctionData::ParamTypes[1];
-		Params[0] = FunctionData::FLOAT;
+		Params[0] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 1, Params, "getDistanceObstacle");
 		function_id++;
 
 		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
-		//function_id++;
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
@@ -218,6 +217,9 @@ int TarakanRobotModule::init() {
 	CSimpleIniA::TNamesDepend keys;
 
 	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
+
+	
+	
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
 		vec_rotate.clear();
@@ -324,8 +326,7 @@ void TarakanRobotModule::robotFree(Robot *robot) {
 		}
 	}
 	pthread_mutex_unlock(&TRM_mx);
-#endif
-	
+#endif	
 }
 
 void TarakanRobotModule::final() {
@@ -338,6 +339,7 @@ void TarakanRobotModule::final() {
 	vec_move.clear();
 	
 #ifdef _WIN32
+	DeleteCriticalSection(&TRM_cs);
 	WSACleanup();
 #else
 	pthread_mutex_destroy(&TRM_mx);
@@ -420,7 +422,6 @@ bool TarakanRobot::require() {
         printf("failed to connect the device!\n");
         return false;
     }
-
 #endif
 
 	printf("Connected to %s robo\n", connection.c_str());
@@ -434,11 +435,11 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
-	#ifdef _WIN32
-		closesocket(s);
-	#else
-		close(s);
-	#endif
+#ifdef _WIN32
+	closesocket(s);
+#else
+	close(s);
+#endif
 	
 }
 
