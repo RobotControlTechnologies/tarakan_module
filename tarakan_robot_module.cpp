@@ -508,11 +508,7 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
-#ifdef _WIN32
-	closesocket(s);
-#else
-	close(s);
-#endif
+
 	// Stop Motors
 	try{
 		sendAndRecv("9&");
