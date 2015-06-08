@@ -45,13 +45,20 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 
 /* GLOBALS CONFIG */
-const unsigned int COUNT_FUNCTIONS = 7;
+const unsigned int COUNT_FUNCTIONS = 9;
 const unsigned int COUNT_AXIS = 3;
 
 #define DEFINE_ALL_AXIS \
 	ADD_ROBOT_AXIS("locked", 1, 0)\
 	ADD_ROBOT_AXIS("straight", 200, 0)\
 	ADD_ROBOT_AXIS("rotation", 200, 0)
+
+#define CREATE_CALIBRATION_MESSAGE_PART(NAME)\
+	temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), NAME, 0) ) );\
+		while (temp.length() < 3){ \
+			temp.insert(0, "0"); \
+		} \
+	initcalibration += temp;
 
 universalVec vec_rotate, vec_move;
 
@@ -60,6 +67,34 @@ bool pred(const std::pair<int, int> &a, const std::pair<int, int> &b) {
 }
 
 /////////////////////////////////////////////////
+
+// sending and receiving messages
+std::string TarakanRobot::sendAndRecv(std::string command_for_robot){
+	fd_set readset;
+	FD_ZERO(&readset);
+	FD_SET(s, &readset);
+
+	send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
+
+	int result = select(s+1, &readset, NULL, NULL, NULL);
+	if (result < 0 && errno != EINTR){
+		printf("Error in select(): %s\n", strerror(errno));
+		throw std::exception();
+	}
+		
+	char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
+	std::string recvstr = "";
+	while (recvstr.find('&') == std::string::npos) {
+		int count_recived = recv(s, recvbuf, DEFAULT_SOCKET_BUFLEN - 1, 0);
+		recvbuf[count_recived] = 0;
+		recvstr.append(recvbuf);
+	}
+	if (recvstr[0] != '0') {
+		throw std::exception();
+	}
+
+	return recvstr;
+}
 
 long int TarakanRobot::getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec){
 	universalVec::const_iterator iter_key;
@@ -100,10 +135,18 @@ TarakanRobotModule::TarakanRobotModule() {
 		system_value function_id = 0;
 
 		//DEFINE_ALL_FUNCTIONS
+<<<<<<< HEAD
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
+=======
+		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[3];
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveTo");
+>>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 		function_id++;
 
 
@@ -114,11 +157,20 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 
+<<<<<<< HEAD
 		Params= new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
 		Params[2] = FunctionData::ParamTypes::FLOAT;
 		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
+=======
+		Params= new FunctionData::ParamTypes[4];
+		Params[0] = FunctionData::ParamTypes::FLOAT;
+		Params[1] = FunctionData::ParamTypes::FLOAT;
+		Params[2] = FunctionData::ParamTypes::FLOAT;
+		Params[3] = FunctionData::ParamTypes::FLOAT;
+		robot_functions[function_id] = new FunctionData(function_id + 1, 4, Params, "moveToByTime");
+>>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 		function_id++;
 
 
@@ -144,6 +196,16 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stop");
+<<<<<<< HEAD
+=======
+		function_id++;
+
+		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "startMotors");
+		function_id++;
+
+		robot_functions[function_id] = new FunctionData(function_id + 1, 0, NULL, "stopMotors");
+		function_id++;
+>>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 	}
 	{
 		robot_axis = new AxisData*[COUNT_AXIS];
@@ -218,8 +280,12 @@ int TarakanRobotModule::init() {
 
 	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
 
+<<<<<<< HEAD
 	
 	
+=======
+
+>>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
 		vec_rotate.clear();
@@ -227,6 +293,19 @@ int TarakanRobotModule::init() {
 
 		std::string tstr("tarakan_");
 		tstr += std::to_string(i);
+
+		// Create calibration message
+		std::string initcalibration("C");
+		std::string temp("");
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_STOP")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_STOP")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_FORW")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_FORW")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_BACK")\
+		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_BACK")\
+		initcalibration += "&";
+		// end calibration message
+
 
 		ini.GetAllKeys(tstr.c_str(), keys);
 		for (ini_i ini_key = keys.begin(); ini_key != keys.end(); ++ini_key) {
@@ -262,7 +341,7 @@ int TarakanRobotModule::init() {
 		const char *pCon = ini.GetValue(tstr.c_str(), "connection", NULL);
 		if (!pCon) { throw std::exception(); }
 		std::string connection(pCon);
-		TarakanRobot *tarakan_robot = new TarakanRobot(connection, vec_rotate, vec_move);
+		TarakanRobot *tarakan_robot = new TarakanRobot(connection, initcalibration, vec_rotate, vec_move);
 		aviable_connections.push_back(tarakan_robot);
 	}
 
@@ -284,6 +363,7 @@ Robot* TarakanRobotModule::robotRequire() {
 	EnterCriticalSection(&TRM_cs);
 	for (auto i = aviable_connections.begin(); i != aviable_connections.end(); ++i) {
 		if ((*i)->require()) {
+
 			LeaveCriticalSection(&TRM_cs);
 			return (*i);
 		}
@@ -361,8 +441,8 @@ void TarakanRobotModule::destroy() {
 	delete this;
 }
 
-TarakanRobot::TarakanRobot(std::string connection, universalVec vec_rotate, universalVec vec_move) :
-	is_aviable(true), is_locked(true), connection(connection), vec_rotate(vec_rotate), vec_move(vec_move) {
+TarakanRobot::TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move) :
+	is_aviable(true), is_locked(true), connection(connection), calibration(calibration), vec_rotate(vec_rotate), vec_move(vec_move) {
 	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
@@ -427,6 +507,14 @@ bool TarakanRobot::require() {
 	printf("Connected to %s robo\n", connection.c_str());
 	is_aviable = false;
 
+	// Apply calibration
+	try{
+		sendAndRecv(calibration);
+		sendAndRecv("8&");
+	}
+	catch (...){
+	}
+
 	return true;
 }
 
@@ -435,11 +523,27 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
+<<<<<<< HEAD
 #ifdef _WIN32
 	closesocket(s);
 #else
 	close(s);
 #endif
+=======
+	// Stop Motors
+	try{
+		sendAndRecv("9&");
+	}
+	catch (...){
+	}
+
+
+	#ifdef _WIN32
+		closesocket(s);
+	#else
+		close(s);
+	#endif
+>>>>>>> 7181f773bfd607a2a38f406943a3b1ffbf3d97bb
 	
 }
 
@@ -457,6 +561,8 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 			(command_index != ROBOT_COMMAND_HAND_CONTROL_BEGIN)
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
 			&& (command_index != 7)
+			&& (command_index != 8)
+			&& (command_index != 9)
 		) {
 			variable_value *input1 = (variable_value *)(*args);
 			if ((*input1 != 0) && (*input1 != 1)) {
@@ -474,10 +580,13 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				command_for_robot += "E";
 				break;
 			case 1:	{// moveTo
-				variable_value *input2 = (variable_value *)(*(args + 1)); //distance
-				if (*input2 < 0) { throw std::exception(); }
+				variable_value *input2 = (variable_value *)(*(args + 1));// On/Off distance test
+				variable_value *input3 = (variable_value *)(*(args + 2)); //distance
+				if (*input3 < 0) { throw std::exception(); }
+				
+				command_for_robot += *input2 ? "1" : "0";
+				command_for_robot += std::to_string(getParametrsToTime(*input3, &vec_move));
 
-				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_move));
 				break;
 			}
 			case 2: {// rotateTo
@@ -487,7 +596,23 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				command_for_robot += std::to_string(getParametrsToTime(*input2, &vec_rotate));
 				break;
 			}
-			case 3:	// moveToByTime
+			case 3:	{// moveToByTime
+				variable_value *input2 = (variable_value *)(*(args + 1));// On/Off distance test
+				variable_value *input3 = (variable_value *)(*(args + 2)); //speed
+				if ((*input3 < 0) || (*input3 > 100)) { throw std::exception(); }
+				variable_value *input4 = (variable_value *)(*(args + 3)); //time
+				if (*input4 < 0) { throw std::exception(); }
+
+				std::string temp(std::to_string((int) *input3));
+				while (temp.length() < 3){
+					temp.insert(0, "0");
+				}
+
+				command_for_robot += *input2 ? "1" : "0";
+				command_for_robot += temp;
+				command_for_robot += std::to_string((int)*input4);
+				break;
+			}
 			case 4: {// rotateToByTime
 				variable_value *input2 = (variable_value *)(*(args + 1)); //speed
 				if ((*input2 < 0) || (*input2 > 100)) { throw std::exception(); }
@@ -521,39 +646,18 @@ FunctionResult* TarakanRobot::executeFunction(system_value command_index, void *
 				need_result = true;
 				break;
 			}
-			case 7:{
+			case 7: // Stop
+			case 8: // Motors On
+			case 9:{ // Motors Off/Stop
 				command_for_robot += std::to_string(command_index);
 				break;
 			}
 			default: 
 				break;
 		}
-
 		command_for_robot += "&";
-
-		fd_set readset;
-		FD_ZERO(&readset);
-		FD_SET(s, &readset);
-
-		send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
-
-		int result = select(s, &readset, NULL, NULL, NULL);
-		if (result < 0 && errno != EINTR){
-			printf("Error in select(): %s\n", strerror(errno));
-			throw std::exception();
-		}
 		
-		char recvbuf[DEFAULT_SOCKET_BUFLEN] = "";
-		std::string recvstr = "";
-		while (recvstr.find('&') == std::string::npos) {
-			int count_recived = recv(s, recvbuf, DEFAULT_SOCKET_BUFLEN - 1, 0);
-			recvbuf[count_recived] = 0;
-			recvstr.append(recvbuf);
-		}
-
-		if (recvstr[0] != '0') {
-			throw std::exception();
-		}
+		std::string	recvstr = sendAndRecv(command_for_robot);
 
 		fr = new FunctionResult(1);
 
