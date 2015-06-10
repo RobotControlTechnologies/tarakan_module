@@ -135,10 +135,7 @@ TarakanRobotModule::TarakanRobotModule() {
 		system_value function_id = 0;
 
 		//DEFINE_ALL_FUNCTIONS
-		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[2];
-		Params[0] = FunctionData::ParamTypes::FLOAT;
-		Params[1] = FunctionData::ParamTypes::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 2, Params, "moveTo");
+
 		FunctionData::ParamTypes *Params = new FunctionData::ParamTypes[3];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
@@ -154,11 +151,6 @@ TarakanRobotModule::TarakanRobotModule() {
 		function_id++;
 
 
-		Params= new FunctionData::ParamTypes[3];
-		Params[0] = FunctionData::ParamTypes::FLOAT;
-		Params[1] = FunctionData::ParamTypes::FLOAT;
-		Params[2] = FunctionData::ParamTypes::FLOAT;
-		robot_functions[function_id] = new FunctionData(function_id + 1, 3, Params, "moveToByTime");
 		Params= new FunctionData::ParamTypes[4];
 		Params[0] = FunctionData::ParamTypes::FLOAT;
 		Params[1] = FunctionData::ParamTypes::FLOAT;
@@ -508,18 +500,13 @@ void TarakanRobot::free() {
 		return;
 	}
 	is_aviable = true;
-#ifdef _WIN32
-	closesocket(s);
-#else
-	close(s);
-#endif
+
 	// Stop Motors
 	try{
 		sendAndRecv("9&");
 	}
 	catch (...){
 	}
-
 
 	#ifdef _WIN32
 		closesocket(s);
@@ -695,8 +682,11 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 	}
 }
 
-int TarakanRobotModule::startProgram(int uniq_index, void *buffer, unsigned int buffer_length) {
+int TarakanRobotModule::startProgram(int uniq_index) {
 	return 0;
+}
+
+void TarakanRobotModule::readPC(void *buffer, unsigned int buffer_length) {
 }
 
 int TarakanRobotModule::endProgram(int uniq_index) {
