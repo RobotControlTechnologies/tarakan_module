@@ -20,7 +20,7 @@ class TarakanRobot : public Robot {
 	public:
 		universalVec vec_rotate, vec_move;
 
-		std::string TarakanRobot::sendAndRecv(std::string command_for_robot);
+		std::string sendAndRecv(std::string command_for_robot);
 		long int getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec);
 
 		TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move);
