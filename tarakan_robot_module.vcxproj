@@ -41,13 +41,17 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\..\bin\robot_modules\tarakan\</OutDir>
+    <OutDir>build\Debug\</OutDir>
     <TargetName>tarakan_module</TargetName>
+    <IncludePath>G:\TempRepo\module_headers\;$(IncludePath)</IncludePath>
+    <IncludePath>G:\TempRepo\simpleini\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\..\bin\robot_modules\tarakan\</OutDir>
-    <TargetName>tarakan_module_rls</TargetName>
+    <OutDir>build\Release\</OutDir>
+    <TargetName>tarakan_module</TargetName>
+    <IncludePath>G:\TempRepo\module_headers\;$(IncludePath)</IncludePath>
+    <IncludePath>G:\TempRepo\simpleini\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
