@@ -1,26 +1,48 @@
 #ifndef TARAKAN_ROBOT_MODULE_H
 #define	TARAKAN_ROBOT_MODULE_H
 
+typedef std::vector< std::pair< int, int > > universalVec;
+
 class TarakanRobot : public Robot {
-	public:
+	protected:
 		bool is_aviable;
 		bool is_locked;
-		SOCKET socket;
+
+#ifdef _WIN32
+	SOCKET s;
+#else
+	int s;
+#endif
 
 		std::vector<variable_value> axis_state;
-	
-		TarakanRobot(SOCKET socket);
+		std::string connection;
+		std::string calibration;
+	public:
+		universalVec vec_rotate, vec_move;
+
+		std::string sendAndRecv(std::string command_for_robot);
+		long int getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec);
+
+		TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move);
+
+		bool require();
+		void free();
+
 		FunctionResult* executeFunction(system_value command_index, void **args);
 		void axisControl(system_value axis_index, variable_value value);
 
-		SOCKET getSocket();
 		~TarakanRobot() {}
 };
 typedef std::vector<TarakanRobot*> m_connections;
 typedef m_connections::iterator m_connections_i;
 
 class TarakanRobotModule : public RobotModule {
+#ifdef _WIN32
 	CRITICAL_SECTION TRM_cs;
+#else
+	pthread_mutex_t TRM_mx;
+#endif
+	
 	m_connections aviable_connections;
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
@@ -43,8 +65,11 @@ class TarakanRobotModule : public RobotModule {
 		void robotFree(Robot *robot);
 		void final();
 
-		//intepreter - program
-		int startProgram(int uniq_index, void *buffer, unsigned int buffer_length);
+		//intepreter - program & lib
+        void readPC(void *buffer, unsigned int buffer_length);
+        
+        //intepreter - program
+        int startProgram(int uniq_index);
 		int endProgram(int uniq_index);
 
 		//destructor

@@ -1,0 +1,43 @@
+# Environment
+CC=g++
+CCC=g++
+CXX=g++
+
+# Constants
+MODULE_HEADERS_DIR = /var/lib/jenkins/workspace/module_headers/
+SIMPLEINI_DIR = /var/lib/jenkins/workspace/RCML_build/simpleini/
+
+INCLUDE_DIR_FLAGS = -I${MODULE_HEADERS_DIR} -I${SIMPLEINI_DIR}
+
+FLAGS_MUTUAL = -Wall -m32 -std=c++11 ${INCLUDE_DIR_FLAGS} -MMD -MP -MF "${OBJECTDIR}/$@.d"
+
+.PHONY: debug
+
+debug: OBJECTDIR = build/Debug
+debug: FLAGS = -g ${FLAGS_MUTUAL}
+debug: FILENAME_FIX = debug
+debug: clean module
+
+release: OBJECTDIR = build/Release
+release: FLAGS = -O3 ${FLAGS_MUTUAL}
+release: FILENAME_FIX = release
+release: clean module
+
+clean:
+	@echo "-------------------------" 
+	rm -rf ${OBJECTDIR}
+
+
+tarakan_robot_module.o:  tarakan_robot_module.cpp
+	@echo "-------------------------" 
+	mkdir -p ${OBJECTDIR}
+	rm -f "${OBJECTDIR}/$@.d"
+	$(COMPILE.cc) $(FLAGS) -o ${OBJECTDIR}/tarakan_robot_module.o tarakan_robot_module.cpp
+
+
+module: tarakan_robot_module.o
+	@echo "-------------------------" 
+	mkdir -p ${OBJECTDIR}
+	${LINK.cc} -m32 -shared -o ${OBJECTDIR}/tarakan_module_$(FILENAME_FIX).so ${OBJECTDIR}/tarakan_robot_module.o -lm -lbluetooth
+
+
