@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <time.h>
 #include <map>
 #include <vector>
@@ -38,11 +39,9 @@ typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 #define DEFAULT_SOCKET_BUFLEN 512
 
-
 #ifdef _WIN32
 	EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #endif
-
 
 /* GLOBALS CONFIG */
 const unsigned int COUNT_FUNCTIONS = 9;
@@ -201,8 +200,24 @@ const char *TarakanRobotModule::getUID() {
 	return "Tarakan robot module 1.00 for presentaion";
 }
 
-void TarakanRobotModule::prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p) {
-	colorPrintf = colorPrintf_p;
+void TarakanRobotModule::prepare(colorPrintfModule_t *colorPrintf_p, colorPrintfModuleVA_t *colorPrintfVA_p) {
+	this->colorPrintf_p = colorPrintfVA_p;
+}
+void TarakanRobot::prepare(colorPrintfRobot_t *colorPrintf_p, colorPrintfRobotVA_t *colorPrintfVA_p) {
+	this->colorPrintf_p = colorPrintfVA_p;
+}
+void TarakanRobotModule::colorPrintf(ConsoleColor colors, const char *mask, ...) {
+	va_list args;
+	va_start(args, mask);
+	(*colorPrintf_p)(this, colors, mask, args);
+	va_end(args);
+}
+
+void TarakanRobot::colorPrintf(ConsoleColor colors, const char *mask, ...) {
+	va_list args;
+	va_start(args, mask);
+	(*colorPrintf_p)(this, uniq_name, colors, mask, args);
+	va_end(args);
 }
 
 void *TarakanRobotModule::writePC(unsigned int *buffer_length) {
@@ -217,11 +232,11 @@ int TarakanRobotModule::init() {
 #ifdef _WIN32
 	WSADATA wsd;
 	if (WSAStartup(MAKEWORD(2, 2), &wsd) != 0) {
-		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
+		colorPrintf(ConsoleColor(ConsoleColor::red), "Unable to load Winsock! Error code is %d\n", WSAGetLastError());
 		return 1;
 	}
 	
-	(*colorPrintf)(this, ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
+	colorPrintf(ConsoleColor(ConsoleColor::green), "WSAStartup() is OK, Winsock lib loaded!\n");
 
 	InitializeCriticalSection(&TRM_cs);
 
@@ -255,7 +270,7 @@ int TarakanRobotModule::init() {
 	CSimpleIniA ini;
 	ini.SetMultiKey(true);
 	if (ini.LoadFile(ConfigPath) < 0) {
-		(*colorPrintf)(this, ConsoleColor(ConsoleColor::red), "Can't load '%s' file!\n", ConfigPath);
+		colorPrintf(ConsoleColor(ConsoleColor::red), "Can't load '%s' file!\n", ConfigPath);
 		return 1;
 	}
 
@@ -318,7 +333,7 @@ int TarakanRobotModule::init() {
 		const char *pCon = ini.GetValue(tstr.c_str(), "connection", NULL);
 		if (!pCon) { throw std::exception(); }
 		std::string connection(pCon);
-		TarakanRobot *tarakan_robot = new TarakanRobot(connection, initcalibration, vec_rotate, vec_move);
+		TarakanRobot *tarakan_robot = new TarakanRobot(connection, initcalibration, vec_rotate, vec_move, i);
 		aviable_connections.push_back(tarakan_robot);
 	}
 
@@ -418,12 +433,20 @@ void TarakanRobotModule::destroy() {
 	delete this;
 }
 
-TarakanRobot::TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move) :
+TarakanRobot::TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move, unsigned int uniq_index) :
 	is_aviable(true), is_locked(true), connection(connection), calibration(calibration), vec_rotate(vec_rotate), vec_move(vec_move) {
+
+	uniq_name = new char[40];
+	sprintf(uniq_name, "robot-%u", uniq_index);
+		
 	for (unsigned int i = 0; i < COUNT_AXIS; ++i) {
 		axis_state.push_back(1);
 	}
 }
+
+TarakanRobot::~TarakanRobot(){
+	delete[] uniq_name;
+};
 
 bool TarakanRobot::require() {
 	if (!is_aviable) {
