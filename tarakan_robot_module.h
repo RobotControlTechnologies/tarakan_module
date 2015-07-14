@@ -17,21 +17,26 @@ class TarakanRobot : public Robot {
 		std::vector<variable_value> axis_state;
 		std::string connection;
 		std::string calibration;
+
+		char *uniq_name;
+		colorPrintfRobotVA_t *colorPrintf_p;
 	public:
 		universalVec vec_rotate, vec_move;
 
 		std::string sendAndRecv(std::string command_for_robot);
 		long int getParametrsToTime(variable_value parametr, universalVec *linkOfaddressMemVec);
 
-		TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move);
-
+		TarakanRobot(std::string connection, std::string calibration, universalVec vec_rotate, universalVec vec_move,unsigned int uniq_index);
+		void prepare(colorPrintfRobot_t *colorPrintf_p, colorPrintfRobotVA_t *colorPrintfVA_p);
 		bool require();
 		void free();
 
 		FunctionResult* executeFunction(system_value command_index, void **args);
 		void axisControl(system_value axis_index, variable_value value);
 
-		~TarakanRobot() {}
+		~TarakanRobot();
+
+		void colorPrintf(ConsoleColor colors, const char *mask, ...);
 };
 typedef std::vector<TarakanRobot*> m_connections;
 typedef m_connections::iterator m_connections_i;
@@ -46,13 +51,13 @@ class TarakanRobotModule : public RobotModule {
 	m_connections aviable_connections;
 	FunctionData **robot_functions;
 	AxisData **robot_axis;
-	colorPrintf_t *colorPrintf;
+	colorPrintfModuleVA_t *colorPrintf_p;
 
 	public:
 		TarakanRobotModule();
 		//init
 		const char *getUID();
-		void prepare(colorPrintf_t *colorPrintf_p, colorPrintfVA_t *colorPrintfVA_p);
+		void prepare(colorPrintfModule_t *colorPrintf_p, colorPrintfModuleVA_t *colorPrintfVA_p);
 
 		//compiler only
 		FunctionData** getFunctions(unsigned int *count_functions);
@@ -75,6 +80,8 @@ class TarakanRobotModule : public RobotModule {
 		//destructor
 		void destroy();
 		~TarakanRobotModule(){};
+
+		void colorPrintf(ConsoleColor colors, const char *mask, ...);
 };
 
 #define ADD_ROBOT_AXIS(AXIS_NAME, UPPER_VALUE, LOWER_VALUE) \
