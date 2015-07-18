@@ -696,7 +696,7 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 			command_for_robot += temp;
 		}
 		else{
-			command_for_robot += std::to_string(value);
+			command_for_robot += std::to_string((int)value);
 		}
 
 		command_for_robot += "&";
