@@ -31,7 +31,7 @@ class TarakanRobot : public Robot {
 		bool require();
 		void free();
 
-		FunctionResult* executeFunction(system_value command_index, void **args);
+		FunctionResult* executeFunction(CommandMode mode, system_value command_index, void **args);
 		void axisControl(system_value axis_index, variable_value value);
 
 		~TarakanRobot();

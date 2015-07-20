@@ -53,7 +53,12 @@ const unsigned int COUNT_AXIS = 3;
 	ADD_ROBOT_AXIS("rotation", 200, 0)
 
 #define CREATE_CALIBRATION_MESSAGE_PART(NAME)\
-	temp.assign(std::to_string( ini.GetLongValue(tstr.c_str(), NAME, 0) ) );\
+	temp_calibration_value = ini.GetLongValue(tstr.c_str(), NAME, -1); \
+	if (temp_calibration_value == -1) { \
+		colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read 'calibration'\n"); \
+		return 1; \
+	} \
+	temp.assign(std::to_string( temp_calibration_value ) ); \
 		while (temp.length() < 3){ \
 			temp.insert(0, "0"); \
 		} \
@@ -77,7 +82,7 @@ std::string TarakanRobot::sendAndRecv(std::string command_for_robot){
 
 	int result = select(s+1, &readset, NULL, NULL, NULL);
 	if (result < 0 && errno != EINTR){
-		printf("Error in select(): %s\n", strerror(errno));
+		colorPrintf(ConsoleColor(ConsoleColor::red),"Error in select(): %s\n", strerror(errno));
 		throw std::exception();
 	}
 		
@@ -276,8 +281,11 @@ int TarakanRobotModule::init() {
 
 	CSimpleIniA::TNamesDepend keys;
 
-	int tcor = ini.GetLongValue("main", "count_robots", 0); // count of robots // returns 0 if count_robots is absent
-
+	int tcor = ini.GetLongValue("main", "count_robots", -1); // count of robots // returns 0 if count_robots is absent
+	if (tcor == -1) { 
+		colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read 'count_robots'\n");
+		return 1; 
+	}
 
 	for (int i = 1; i <= tcor; i++){ // for each robot
 		vec_rotate.clear();
@@ -289,6 +297,7 @@ int TarakanRobotModule::init() {
 		// Create calibration message
 		std::string initcalibration("C");
 		std::string temp("");
+		int temp_calibration_value;
 		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_STOP")\
 		CREATE_CALIBRATION_MESSAGE_PART("SERV_L_STOP")\
 		CREATE_CALIBRATION_MESSAGE_PART("SERV_R_FORW")\
@@ -298,6 +307,11 @@ int TarakanRobotModule::init() {
 		initcalibration += "&";
 		// end calibration message
 
+		int robot_number = ini.GetLongValue(tstr.c_str(),"robot_number",-1);
+		if (robot_number == -1) { 
+			colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read 'robot_number'\n");
+			return 1; 
+		}
 
 		ini.GetAllKeys(tstr.c_str(), keys);
 		for (ini_i ini_key = keys.begin(); ini_key != keys.end(); ++ini_key) {
@@ -305,22 +319,24 @@ int TarakanRobotModule::init() {
 			
 			if (tIniTime.find("move") != std::string::npos) {
 				tIniTime = tIniTime.substr(10);
-
+				int temp_move_value = ini.GetLongValue(tstr.c_str(), ini_key->pItem, -1);
+				if (temp_move_value == -1) { 
+					colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read '%s'\n", ini_key->pItem);
+					return 1; 
+				}
 				vec_move.push_back(
-					std::make_pair(
-						ini.GetLongValue(tstr.c_str(), ini_key->pItem, 0),
-						std::stoi(tIniTime, nullptr, 10)
-					)
+					std::make_pair(temp_move_value, std::stoi(tIniTime, nullptr, 10))
 				);
 			};
 			if (tIniTime.find("rotate") != std::string::npos) {
 				tIniTime = tIniTime.substr(13);
-
+				int temp_rotate_value = ini.GetLongValue(tstr.c_str(), ini_key->pItem, -1);
+				if (temp_rotate_value == -1) { 
+					colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read '%s'\n", ini_key->pItem);
+					return 1; 
+				}
 				vec_rotate.push_back(
-					std::make_pair(
-						ini.GetLongValue(tstr.c_str(), ini_key->pItem, 0),
-						std::stoi(tIniTime, nullptr, 10)
-					)
+					std::make_pair( temp_rotate_value, std::stoi(tIniTime, nullptr, 10))
 				);
 			};
 		}
@@ -331,9 +347,12 @@ int TarakanRobotModule::init() {
 
 		// only one field connection in tarakan_x section
 		const char *pCon = ini.GetValue(tstr.c_str(), "connection", NULL);
-		if (!pCon) { throw std::exception(); }
+		if (!pCon) { 
+			colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read 'connection'\n");
+			return 1; 
+		}
 		std::string connection(pCon);
-		TarakanRobot *tarakan_robot = new TarakanRobot(connection, initcalibration, vec_rotate, vec_move, i);
+		TarakanRobot *tarakan_robot = new TarakanRobot(connection, initcalibration, vec_rotate, vec_move, robot_number);
 		aviable_connections.push_back(tarakan_robot);
 	}
 
@@ -539,7 +558,7 @@ void TarakanRobot::free() {
 	
 }
 
-FunctionResult* TarakanRobot::executeFunction(system_value command_index, void **args) {
+FunctionResult* TarakanRobot::executeFunction(CommandMode mode, system_value command_index, void **args) {
 	if (!command_index) {
 		return NULL;
 	}
@@ -701,7 +720,7 @@ void TarakanRobot::axisControl(system_value axis_index, variable_value value) {
 
 		command_for_robot += "&";
 		send(s, command_for_robot.c_str(), command_for_robot.length(), 0);
-		printf("%s\n",command_for_robot.c_str());
+		colorPrintf(ConsoleColor(ConsoleColor::green),"%s\n",command_for_robot.c_str());
 	}
 }
 
