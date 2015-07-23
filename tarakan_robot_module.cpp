@@ -329,7 +329,7 @@ int TarakanRobotModule::init() {
 				);
 			};
 			if (tIniTime.find("rotate") != std::string::npos) {
-				tIniTime = tIniTime.substr(13);
+				tIniTime = tIniTime.substr(12);
 				int temp_rotate_value = ini.GetLongValue(tstr.c_str(), ini_key->pItem, -1);
 				if (temp_rotate_value == -1) { 
 					colorPrintf(ConsoleColor(ConsoleColor::red), "Can't read '%s'\n", ini_key->pItem);
@@ -528,6 +528,7 @@ bool TarakanRobot::require() {
 
 	// Apply calibration
 	try{
+		
 		sendAndRecv(calibration);
 		sendAndRecv("8&");
 	}
@@ -567,7 +568,6 @@ FunctionResult* TarakanRobot::executeFunction(CommandMode mode, system_value com
 	try {
 		std::string command_for_robot = "";
 		bool need_result = false;
-
 		if (
 			(command_index != ROBOT_COMMAND_HAND_CONTROL_BEGIN)
 			&& (command_index != ROBOT_COMMAND_HAND_CONTROL_END)
@@ -582,7 +582,7 @@ FunctionResult* TarakanRobot::executeFunction(CommandMode mode, system_value com
 			command_for_robot += std::to_string(command_index);
 			command_for_robot += *input1 ? "1" : "0";
 		}
-
+		
 		switch (command_index) {
 			case ROBOT_COMMAND_HAND_CONTROL_BEGIN: 
 				command_for_robot += "B";
@@ -682,7 +682,6 @@ FunctionResult* TarakanRobot::executeFunction(CommandMode mode, system_value com
 	} catch (...) {
 		fr = new FunctionResult(0);
 	}
-
 	return fr;
 }
 
