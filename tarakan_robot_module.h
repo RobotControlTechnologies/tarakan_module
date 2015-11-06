@@ -1,6 +1,10 @@
 #ifndef TARAKAN_ROBOT_MODULE_H
 #define TARAKAN_ROBOT_MODULE_H
 
+#define ROBOT_COMMAND_FREE 0
+#define ROBOT_COMMAND_HAND_CONTROL_BEGIN -1
+#define ROBOT_COMMAND_HAND_CONTROL_END -2
+
 typedef std::vector<std::pair<int, int> > universalVec;
 
 class TarakanRobot : public Robot {
