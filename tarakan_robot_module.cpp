@@ -37,6 +37,7 @@ typedef std::vector<std::pair<int, int> > universalVec;
 typedef CSimpleIniA::TNamesDepend::const_iterator ini_i;
 
 #define DEFAULT_SOCKET_BUFLEN 512
+#define IID "RCT.Tarakan_robot_module_v100"
 
 #ifdef _WIN32
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -137,6 +138,14 @@ long int TarakanRobot::getParametrsToTime(variable_value parametr,
 
 TarakanRobotModule::TarakanRobotModule() {
   {
+#ifndef ROBOT_MODULE_H_000
+  mi = new ModuleInfo;
+  mi->uid = IID;
+  mi->mode = ModuleInfo::Modes::PROD;
+  mi->version = BUILD_NUMBER;
+  mi->digest = NULL;
+#endif
+
     robot_functions = new FunctionData *[COUNT_FUNCTIONS];
     system_value function_id = 0;
 
@@ -208,9 +217,11 @@ TarakanRobotModule::TarakanRobotModule() {
   }
 }
 
-const char *TarakanRobotModule::getUID() {
-  return "Tarakan robot module 1.00 for presentaion";
-}
+#ifdef ROBOT_MODULE_H_000
+const char *TarakanRobotModule::getUID() { return IID; }
+#else
+const struct ModuleInfo &TarakanRobotModule::getModuleInfo() { return *mi; }
+#endif
 
 void TarakanRobotModule::prepare(colorPrintfModule_t *colorPrintf_p,
                                  colorPrintfModuleVA_t *colorPrintfVA_p) {
@@ -461,6 +472,9 @@ void TarakanRobotModule::final() {
 }
 
 void TarakanRobotModule::destroy() {
+#ifndef ROBOT_MODULE_H_000
+  delete mi;
+#endif
   for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
     if (robot_functions[j]->count_params) {
       delete[] robot_functions[j]->params;
@@ -707,17 +721,30 @@ FunctionResult *TarakanRobot::executeFunction(CommandMode mode,
 
     std::string recvstr = sendAndRecv(command_for_robot);
 
-    fr = new FunctionResult(1);
+    //fr = new FunctionResult(1);
 
     if (need_result) {
       recvstr.erase(0, 1);
       recvstr.erase(recvstr.find('&'), 1);
+#ifdef ROBOT_MODULE_H_000
       fr = new FunctionResult(1, std::stoi(recvstr.c_str()));
+#else
+      fr = new FunctionResult(FunctionResult::Types::VALUE, std::stod(recvstr.c_str()));
+#endif
+      //fr = new FunctionResult(1, std::stod(recvstr.c_str()));
     } else {
+#ifdef ROBOT_MODULE_H_000
       fr = new FunctionResult(1, 0);
+#else
+      fr = new FunctionResult(FunctionResult::Types::VALUE, 0);
+#endif
     }
   } catch (...) {
-    fr = new FunctionResult(0);
+#ifdef ROBOT_MODULE_H_000
+      fr = new FunctionResult(0);
+#else
+      fr = new FunctionResult(FunctionResult::Types::EXCEPTION);
+#endif
   }
   return fr;
 }
@@ -762,6 +789,12 @@ int TarakanRobotModule::startProgram(int uniq_index) { return 0; }
 void TarakanRobotModule::readPC(void *buffer, unsigned int buffer_length) {}
 
 int TarakanRobotModule::endProgram(int uniq_index) { return 0; }
+
+#ifndef ROBOT_MODULE_H_000
+PREFIX_FUNC_DLL unsigned short getRobotModuleApiVersion() {
+  return ROBOT_MODULE_API_VERSION;
+};
+#endif
 
 PREFIX_FUNC_DLL RobotModule *getRobotModuleObject() {
   return new TarakanRobotModule();
