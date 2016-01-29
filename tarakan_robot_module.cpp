@@ -14,6 +14,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2bth.h>
+#include "build_number.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 #else
