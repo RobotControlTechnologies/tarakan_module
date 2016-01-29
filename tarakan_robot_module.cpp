@@ -138,13 +138,11 @@ long int TarakanRobot::getParametrsToTime(variable_value parametr,
 
 TarakanRobotModule::TarakanRobotModule() {
   {
-#ifndef ROBOT_MODULE_H_000
-  mi = new ModuleInfo;
-  mi->uid = IID;
-  mi->mode = ModuleInfo::Modes::PROD;
-  mi->version = BUILD_NUMBER;
-  mi->digest = NULL;
-#endif
+    mi = new ModuleInfo;
+    mi->uid = IID;
+    mi->mode = ModuleInfo::Modes::PROD;
+    mi->version = BUILD_NUMBER;
+    mi->digest = NULL;
 
     robot_functions = new FunctionData *[COUNT_FUNCTIONS];
     system_value function_id = 0;
@@ -217,11 +215,7 @@ TarakanRobotModule::TarakanRobotModule() {
   }
 }
 
-#ifdef ROBOT_MODULE_H_000
-const char *TarakanRobotModule::getUID() { return IID; }
-#else
 const struct ModuleInfo &TarakanRobotModule::getModuleInfo() { return *mi; }
-#endif
 
 void TarakanRobotModule::prepare(colorPrintfModule_t *colorPrintf_p,
                                  colorPrintfModuleVA_t *colorPrintfVA_p) {
@@ -472,9 +466,7 @@ void TarakanRobotModule::final() {
 }
 
 void TarakanRobotModule::destroy() {
-#ifndef ROBOT_MODULE_H_000
   delete mi;
-#endif
   for (unsigned int j = 0; j < COUNT_FUNCTIONS; ++j) {
     if (robot_functions[j]->count_params) {
       delete[] robot_functions[j]->params;
@@ -726,25 +718,13 @@ FunctionResult *TarakanRobot::executeFunction(CommandMode mode,
     if (need_result) {
       recvstr.erase(0, 1);
       recvstr.erase(recvstr.find('&'), 1);
-#ifdef ROBOT_MODULE_H_000
-      fr = new FunctionResult(1, std::stoi(recvstr.c_str()));
-#else
       fr = new FunctionResult(FunctionResult::Types::VALUE, std::stod(recvstr.c_str()));
-#endif
       //fr = new FunctionResult(1, std::stod(recvstr.c_str()));
     } else {
-#ifdef ROBOT_MODULE_H_000
-      fr = new FunctionResult(1, 0);
-#else
       fr = new FunctionResult(FunctionResult::Types::VALUE, 0);
-#endif
     }
   } catch (...) {
-#ifdef ROBOT_MODULE_H_000
-      fr = new FunctionResult(0);
-#else
       fr = new FunctionResult(FunctionResult::Types::EXCEPTION);
-#endif
   }
   return fr;
 }
@@ -790,11 +770,9 @@ void TarakanRobotModule::readPC(void *buffer, unsigned int buffer_length) {}
 
 int TarakanRobotModule::endProgram(int uniq_index) { return 0; }
 
-#ifndef ROBOT_MODULE_H_000
 PREFIX_FUNC_DLL unsigned short getRobotModuleApiVersion() {
   return ROBOT_MODULE_API_VERSION;
 };
-#endif
 
 PREFIX_FUNC_DLL RobotModule *getRobotModuleObject() {
   return new TarakanRobotModule();
