@@ -772,7 +772,7 @@ void TarakanRobotModule::readPC(void *buffer, unsigned int buffer_length) {}
 int TarakanRobotModule::endProgram(int uniq_index) { return 0; }
 
 PREFIX_FUNC_DLL unsigned short getRobotModuleApiVersion() {
-  return ROBOT_MODULE_API_VERSION;
+  return MODULE_API_VERSION;
 };
 
 PREFIX_FUNC_DLL RobotModule *getRobotModuleObject() {
